@@ -79,6 +79,8 @@ export default function StaffManagementPage() {
   // Contact Edit Modal states
   const [editError, setEditError] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState('');
 
   const isPrimaryOwner = !!owner?.primaryOwner;
   const isOwner = owner?.role === 'OWNER';
@@ -209,15 +211,18 @@ export default function StaffManagementPage() {
     setEditError('');
     setEditSubmitting(true);
     try {
+      const emailPayload = isChangingEmail ? (newEmailInput.trim() || null) : null;
       await staffApi.updateContact(editingStaff.id, {
         fullName: editingStaff.fullName?.trim(),
-        email: editingStaff.email?.trim() || null,
+        email: emailPayload,
         phone: editingStaff.phone?.trim() || null,
         designation: editingStaff.designation?.trim() || null,
         storeHub: editingStaff.storeHub?.trim() || null
       });
       showNotification(`Updated contact details for ${editingStaff.fullName}.`);
       setEditingStaff(null);
+      setIsChangingEmail(false);
+      setNewEmailInput('');
       await loadData();
     } catch (err) {
       console.error('Contact update error:', err);
@@ -854,6 +859,8 @@ export default function StaffManagementPage() {
                                   title="Edit contact information"
                                   onClick={() => {
                                     setEditError('');
+                                    setIsChangingEmail(false);
+                                    setNewEmailInput('');
                                     setEditingStaff({ ...person });
                                   }}
                                   style={{
@@ -1583,7 +1590,11 @@ export default function StaffManagementPage() {
           <div className="owner-card" style={{ maxWidth: '520px', width: '100%', padding: '2rem', position: 'relative' }}>
             <button
               type="button"
-              onClick={() => setEditingStaff(null)}
+              onClick={() => {
+                setEditingStaff(null);
+                setIsChangingEmail(false);
+                setNewEmailInput('');
+              }}
               style={{ position: 'absolute', right: '1.25rem', top: '1.25rem', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
             >
               <X size={20} />
@@ -1635,32 +1646,64 @@ export default function StaffManagementPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                     <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
-                      Email Address *
+                      Email Address
                     </label>
-                    {!(isPrimaryOwner || owner?.id === editingStaff.id) && (
+                    {isPrimaryOwner || owner?.id === editingStaff.id ? (
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#059669', cursor: 'pointer', fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          id="toggle-change-email"
+                          checked={isChangingEmail}
+                          onChange={(e) => {
+                            setIsChangingEmail(e.target.checked);
+                            setEditError('');
+                            if (!e.target.checked) {
+                              setNewEmailInput('');
+                            }
+                          }}
+                        />
+                        <span>Change Email</span>
+                      </label>
+                    ) : (
                       <span style={{ fontSize: '0.72rem', color: '#64748b', fontStyle: 'italic' }}>
                         Primary Owner only
                       </span>
                     )}
                   </div>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={editingStaff.email || ''}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, email: e.target.value })}
-                    disabled={!(isPrimaryOwner || owner?.id === editingStaff.id)}
-                    readOnly={!(isPrimaryOwner || owner?.id === editingStaff.id)}
-                    style={!(isPrimaryOwner || owner?.id === editingStaff.id) ? { backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' } : {}}
-                    required
-                  />
-                  {!(isPrimaryOwner || owner?.id === editingStaff.id) ? (
-                    <small style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
-                      Only the Primary Owner can update another user's email address.
-                    </small>
+
+                  {!isChangingEmail ? (
+                    <div>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={editingStaff.email || ''}
+                        disabled
+                        readOnly
+                        style={{ backgroundColor: '#f8fafc', color: '#64748b', cursor: 'not-allowed' }}
+                      />
+                      <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                        Current login email (unchanged). Check &quot;Change Email&quot; above to assign a new address.
+                      </small>
+                    </div>
                   ) : (
-                    <small style={{ color: '#059669', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
-                      Primary Owner can update this account's login email address.
-                    </small>
+                    <div>
+                      <input
+                        type="email"
+                        id="edit-staff-new-email"
+                        className="form-input"
+                        placeholder="Enter new email address"
+                        value={newEmailInput}
+                        onChange={(e) => {
+                          setNewEmailInput(e.target.value);
+                          setEditError('');
+                        }}
+                        required={isChangingEmail}
+                        autoFocus
+                      />
+                      <small style={{ color: '#059669', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                        Enter a new, unused email address. Any existing email will be rejected.
+                      </small>
+                    </div>
                   )}
                 </div>
 
@@ -1713,7 +1756,11 @@ export default function StaffManagementPage() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                   <button
                     type="button"
-                    onClick={() => setEditingStaff(null)}
+                    onClick={() => {
+                      setEditingStaff(null);
+                      setIsChangingEmail(false);
+                      setNewEmailInput('');
+                    }}
                     className="btn btn-secondary"
                     disabled={editSubmitting}
                   >
