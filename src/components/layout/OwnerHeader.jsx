@@ -152,7 +152,7 @@ export default function OwnerHeader() {
 
         {/* View Customer App Link */}
         <a
-          href="http://localhost:5173"
+          href={import.meta.env.VITE_CUSTOMER_STORE_URL || import.meta.env.VITE_CUSTOMER_URL || 'http://localhost:5173'}
           target="_blank"
           rel="noopener noreferrer"
           title="Open Customer Storefront"
