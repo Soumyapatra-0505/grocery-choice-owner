@@ -187,7 +187,12 @@ export const authApi = {
     }),
   getDevOtp: (identifier) =>
     request(`/api/auth/dev-otp/${encodeURIComponent(identifier)}`),
-  getMe: () => request('/api/auth/me')
+  getMe: () => request('/api/auth/me'),
+  updateProfile: (profileData) =>
+    request('/api/auth/me', {
+      method: 'PUT',
+      body: profileData
+    })
 };
 
 export { API_BASE_URL };

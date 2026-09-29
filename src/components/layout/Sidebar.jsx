@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/Logo';
 import { useOwnerAuth } from '../../context/OwnerAuthContext';
 import { useOwnerData } from '../../context/OwnerDataContext';
@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Users,
   BarChart3,
+  User,
   LogOut
 } from 'lucide-react';
 
@@ -44,7 +45,8 @@ export default function Sidebar() {
       badge: orders.length ? `${orders.length}` : null
     },
     { to: '/customers', label: 'Customers', icon: <Users size={19} /> },
-    { to: '/reports', label: 'Reports', icon: <BarChart3 size={19} /> }
+    { to: '/reports', label: 'Reports', icon: <BarChart3 size={19} /> },
+    { to: '/profile', label: 'Profile', icon: <User size={19} /> }
   ];
 
   return (
@@ -131,10 +133,23 @@ export default function Sidebar() {
           backgroundColor: '#0b1324',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          gap: '0.5rem'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', overflow: 'hidden' }}>
+        <Link
+          to="/profile"
+          title="View Owner Profile"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            overflow: 'hidden',
+            textDecoration: 'none',
+            flex: 1,
+            cursor: 'pointer'
+          }}
+        >
           <div
             style={{
               width: '36px',
@@ -147,20 +162,29 @@ export default function Sidebar() {
               justifyContent: 'center',
               fontWeight: 800,
               fontSize: '0.9rem',
-              flexShrink: 0
+              flexShrink: 0,
+              overflow: 'hidden'
             }}
           >
-            {owner?.name ? owner.name.charAt(0) : 'O'}
+            {owner?.profilePicture ? (
+              <img
+                src={owner.profilePicture}
+                alt="Avatar"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              (owner?.fullName || owner?.name || 'O').charAt(0).toUpperCase()
+            )}
           </div>
           <div className="sidebar-text-hide" style={{ minWidth: 0 }}>
             <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {owner?.name || 'Store Owner'}
+              {owner?.fullName || owner?.name || 'Store Owner'}
             </div>
             <div style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {owner?.role || 'Manager'}
+              {owner?.role || 'OWNER'}
             </div>
           </div>
-        </div>
+        </Link>
 
         <button
           type="button"
@@ -176,7 +200,8 @@ export default function Sidebar() {
             borderRadius: '6px',
             display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            flexShrink: 0
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}

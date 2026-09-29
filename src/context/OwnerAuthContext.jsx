@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../services/api';
 
 const OwnerAuthContext = createContext();
@@ -6,18 +6,52 @@ const OwnerAuthContext = createContext();
 const OWNER_STORAGE_KEY = 'grocery_choice_owner_auth';
 const OWNER_TOKEN_KEY = 'grocery_choice_owner_token';
 
+/**
+ * Retrieves the saved owner avatar from localStorage if available
+ */
+function getSavedOwnerAvatar(user) {
+  if (!user) return null;
+  return (
+    user.profilePicture ||
+    (user.phone && localStorage.getItem(`grocery_choice_owner_avatar_${user.phone}`)) ||
+    (user.email && localStorage.getItem(`grocery_choice_owner_avatar_${user.email}`)) ||
+    (user.id && localStorage.getItem(`grocery_choice_owner_avatar_${user.id}`)) ||
+    localStorage.getItem('grocery_choice_owner_avatar_default') ||
+    null
+  );
+}
+
 export function OwnerAuthProvider({ children }) {
   const [owner, setOwner] = useState(() => {
     try {
       const saved = localStorage.getItem(OWNER_STORAGE_KEY);
       const token = localStorage.getItem(OWNER_TOKEN_KEY);
-      return saved && token ? JSON.parse(saved) : null;
+      if (saved && token) {
+        const parsed = JSON.parse(saved);
+        const avatar = getSavedOwnerAvatar(parsed);
+        return {
+          ...parsed,
+          profilePicture: avatar,
+          avatar
+        };
+      }
+      return null;
     } catch {
       return null;
     }
   });
 
   const isAuthenticated = !!owner && !!localStorage.getItem(OWNER_TOKEN_KEY);
+
+  const logout = useCallback(() => {
+    setOwner(null);
+    try {
+      localStorage.removeItem(OWNER_STORAGE_KEY);
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Sync session on mount
   useEffect(() => {
@@ -27,6 +61,7 @@ export function OwnerAuthProvider({ children }) {
         .then((user) => {
           if (user && (user.role === 'OWNER' || user.role === 'ADMIN')) {
             setOwner((prev) => {
+              const savedAvatar = getSavedOwnerAvatar(user) || prev?.profilePicture || null;
               const updated = {
                 ...prev,
                 id: user.id,
@@ -35,8 +70,11 @@ export function OwnerAuthProvider({ children }) {
                 email: user.email,
                 phone: user.phone,
                 role: user.role,
+                gender: user.gender !== undefined ? user.gender : (prev?.gender || null),
+                dateOfBirth: user.dateOfBirth !== undefined ? user.dateOfBirth : (prev?.dateOfBirth || null),
                 storeName: 'Grocery Choice - Flagship Hub',
-                avatar: prev?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150'
+                profilePicture: savedAvatar,
+                avatar: savedAvatar
               };
               localStorage.setItem(OWNER_STORAGE_KEY, JSON.stringify(updated));
               return updated;
@@ -46,12 +84,16 @@ export function OwnerAuthProvider({ children }) {
             logout();
           }
         })
-        .catch(() => {
-          // Token invalid or expired
-          logout();
+        .catch((err) => {
+          // Token invalid or expired - only clear session on explicit 401/403
+          if (err && (err.status === 401 || err.status === 403)) {
+            logout();
+          } else {
+            console.debug('Owner session sync note:', err?.message);
+          }
         });
     }
-  }, []);
+  }, [logout]);
 
   const login = async (identifier, password) => {
     if (!identifier || !password) {
@@ -65,16 +107,20 @@ export function OwnerAuthProvider({ children }) {
           return { success: false, error: 'Access restricted to store owners and managers.' };
         }
 
+        const savedAvatar = getSavedOwnerAvatar(data.user);
         const userObj = {
           id: data.user.id,
           name: data.user.fullName || 'Suresh Verma',
           fullName: data.user.fullName || 'Suresh Verma',
           email: data.user.email,
           phone: data.user.phone,
+          gender: data.user.gender || null,
+          dateOfBirth: data.user.dateOfBirth || null,
           role: data.user.role,
           storeName: 'Grocery Choice - Flagship Hub',
           authMethod: 'password',
-          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150'
+          profilePicture: savedAvatar,
+          avatar: savedAvatar
         };
 
         localStorage.setItem(OWNER_TOKEN_KEY, data.token);
@@ -98,16 +144,20 @@ export function OwnerAuthProvider({ children }) {
         return { success: false, error: 'Access restricted to store owners and managers.' };
       }
 
+      const savedAvatar = getSavedOwnerAvatar(authResult.user);
       const userObj = {
         id: authResult.user.id,
         name: authResult.user.fullName || 'Suresh Verma',
         fullName: authResult.user.fullName || 'Suresh Verma',
         email: authResult.user.email,
         phone: authResult.user.phone,
+        gender: authResult.user.gender || null,
+        dateOfBirth: authResult.user.dateOfBirth || null,
         role: authResult.user.role,
         storeName: 'Grocery Choice - Flagship Hub',
         authMethod: 'otp',
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150'
+        profilePicture: savedAvatar,
+        avatar: savedAvatar
       };
 
       localStorage.setItem(OWNER_TOKEN_KEY, authResult.token);
@@ -119,18 +169,94 @@ export function OwnerAuthProvider({ children }) {
     return { success: false, error: 'Invalid authentication response' };
   };
 
-  const logout = () => {
-    setOwner(null);
+  const updateOwnerProfile = async (updatedFields) => {
     try {
-      localStorage.removeItem(OWNER_STORAGE_KEY);
-      localStorage.removeItem(OWNER_TOKEN_KEY);
-    } catch {
-      // ignore
+      const token = typeof localStorage !== 'undefined' ? localStorage.getItem(OWNER_TOKEN_KEY) : null;
+      if (token) {
+        const payload = {};
+        if (updatedFields.fullName !== undefined) payload.fullName = updatedFields.fullName;
+        if (updatedFields.email !== undefined) payload.email = updatedFields.email;
+        if (updatedFields.phone !== undefined) payload.phone = updatedFields.phone;
+        if (updatedFields.gender !== undefined) payload.gender = updatedFields.gender;
+        if (updatedFields.dateOfBirth !== undefined) payload.dateOfBirth = updatedFields.dateOfBirth;
+
+        if (Object.keys(payload).length > 0) {
+          try {
+            await authApi.updateProfile(payload);
+          } catch (apiErr) {
+            if (apiErr.status && apiErr.status >= 400 && apiErr.status < 500 && !apiErr.isNetworkError) {
+              throw apiErr;
+            }
+            console.debug('Backend owner profile sync note:', apiErr.message);
+          }
+        }
+      }
+    } catch (err) {
+      if (err.status && err.status >= 400 && err.status < 500 && !err.isNetworkError) {
+        throw err;
+      }
+      console.debug('Backend owner profile sync note:', err.message);
     }
+
+    setOwner((prev) => {
+      if (!prev) return null;
+      const updated = {
+        ...prev,
+        ...updatedFields,
+        name: updatedFields.fullName || prev.name,
+        fullName: updatedFields.fullName || prev.fullName
+      };
+
+      if (updatedFields.profilePicture !== undefined) {
+        const avatarKeys = [
+          prev.phone && `grocery_choice_owner_avatar_${prev.phone}`,
+          prev.email && `grocery_choice_owner_avatar_${prev.email}`,
+          prev.id && `grocery_choice_owner_avatar_${prev.id}`,
+          'grocery_choice_owner_avatar_default'
+        ].filter(Boolean);
+
+        if (updatedFields.profilePicture) {
+          avatarKeys.forEach((key) => {
+            try {
+              localStorage.setItem(key, updatedFields.profilePicture);
+            } catch (e) {
+              console.error('Failed to store owner avatar in localStorage', e);
+            }
+          });
+          updated.avatar = updatedFields.profilePicture;
+        } else {
+          avatarKeys.forEach((key) => {
+            try {
+              localStorage.removeItem(key);
+            } catch (e) {
+              console.error('Failed to remove owner avatar from localStorage', e);
+            }
+          });
+          updated.profilePicture = null;
+          updated.avatar = null;
+        }
+      }
+
+      try {
+        localStorage.setItem(OWNER_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to sync updated owner to localStorage', e);
+      }
+      return updated;
+    });
   };
 
   return (
-    <OwnerAuthContext.Provider value={{ owner, isAuthenticated, login, loginWithOtp, logout }}>
+    <OwnerAuthContext.Provider
+      value={{
+        owner,
+        isAuthenticated,
+        login,
+        loginWithOtp,
+        logout,
+        updateOwnerProfile
+      }}
+    >
       {children}
     </OwnerAuthContext.Provider>
   );

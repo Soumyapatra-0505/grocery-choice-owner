@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useOwnerData } from '../../context/OwnerDataContext';
+import { useOwnerAuth } from '../../context/OwnerAuthContext';
 import {
   Bell,
   Search,
@@ -13,13 +14,17 @@ import {
 
 export default function OwnerHeader() {
   const { lowStockProducts } = useOwnerData();
+  const { owner } = useOwnerAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
+
+  const ownerFirstName = owner?.fullName ? owner.fullName.split(' ')[0] : (owner?.name ? owner.name.split(' ')[0] : 'Owner');
+  const ownerInitial = (owner?.fullName || owner?.name || 'O').charAt(0).toUpperCase();
 
   return (
     <header className="owner-header">
       {/* Search Input */}
-      <div style={{ position: 'relative', width: '320px' }}>
+      <div className="owner-header-search" style={{ position: 'relative' }}>
         <Search
           size={16}
           color="#94a3b8"
@@ -29,7 +34,7 @@ export default function OwnerHeader() {
           type="text"
           placeholder="Search products, orders, customers..."
           className="form-input"
-          style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.85rem' }}
+          style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.85rem', width: '100%' }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && e.target.value.trim()) {
               navigate(`/products?search=${encodeURIComponent(e.target.value.trim())}`);
@@ -39,7 +44,7 @@ export default function OwnerHeader() {
       </div>
 
       {/* Right Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+      <div className="owner-header-actions" style={{ display: 'flex', alignItems: 'center' }}>
         {/* Quick Add Product Button */}
         <Link to="/products/add" className="btn btn-primary btn-sm">
           <Plus size={16} />
@@ -173,6 +178,23 @@ export default function OwnerHeader() {
           <span>Customer Store</span>
           <ExternalLink size={13} />
         </a>
+
+        {/* Owner Profile Account Button */}
+        <Link
+          to="/profile"
+          className="owner-header-user-btn"
+          aria-label="Owner Profile"
+          title={`Owner Profile: ${owner?.fullName || owner?.name || 'Store Owner'}`}
+        >
+          <div className="owner-header-avatar">
+            {owner?.profilePicture ? (
+              <img src={owner.profilePicture} alt={ownerFirstName} />
+            ) : (
+              <span>{ownerInitial}</span>
+            )}
+          </div>
+          <span className="owner-header-user-name">{ownerFirstName}</span>
+        </Link>
       </div>
     </header>
   );

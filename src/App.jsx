@@ -17,6 +17,7 @@ import InventoryPage from './pages/InventoryPage';
 import OrdersPage from './pages/OrdersPage';
 import CustomersPage from './pages/CustomersPage';
 import ReportsPage from './pages/ReportsPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Protected Route Guard
 function ProtectedRoute({ children }) {
@@ -54,6 +55,7 @@ export default function App() {
               <Route path="orders" element={<OrdersPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
 
             {/* Fallback */}
