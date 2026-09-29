@@ -211,6 +211,11 @@ export const staffApi = {
       method: 'PUT',
       body: data
     }),
+  updateContact: (id, data) =>
+    request(`/api/staff/${id}/contact`, {
+      method: 'PUT',
+      body: data
+    }),
   changeRole: (id, role) =>
     request(`/api/staff/${id}/role`, {
       method: 'PATCH',

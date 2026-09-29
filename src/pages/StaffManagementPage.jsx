@@ -76,7 +76,42 @@ export default function StaffManagementPage() {
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Contact Edit Modal states
+  const [editError, setEditError] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
   const isPrimaryOwner = !!owner?.primaryOwner;
+  const isOwner = owner?.role === 'OWNER';
+  const isAdmin = owner?.role === 'ADMIN';
+
+  // Authorization check for editing contact details of a user
+  const canEditPerson = useCallback((person) => {
+    if (!owner || !person) return false;
+    if (owner.role === 'STAFF' || owner.role === 'CUSTOMER') return false;
+    // Primary Owner target: only Primary Owner can edit themselves
+    if (person.primaryOwner) {
+      return isPrimaryOwner;
+    }
+    // OWNER target (non-primary)
+    if (person.role === 'OWNER') {
+      if (isAdmin) return false;
+      if (isOwner && !isPrimaryOwner && owner.id !== person.id) return false;
+      return true;
+    }
+    // ADMIN target
+    if (person.role === 'ADMIN') {
+      if (isPrimaryOwner || isOwner) return true;
+      if (isAdmin) {
+        return owner.id === person.id || owner.permissions?.includes('MANAGE_ADMINS');
+      }
+      return false;
+    }
+    // STAFF target
+    if (person.role === 'STAFF') {
+      return isPrimaryOwner || isOwner || isAdmin || owner.permissions?.includes('MANAGE_STAFF');
+    }
+    return isPrimaryOwner;
+  }, [owner, isPrimaryOwner, isOwner, isAdmin]);
 
   const showNotification = (msg) => {
     setSuccessMessage(msg);
@@ -167,22 +202,28 @@ export default function StaffManagementPage() {
     setFormError('');
   };
 
-  // Handle Edit Staff submission
+  // Handle Edit Staff Contact submission
   const handleEditStaffSubmit = async (e) => {
     e.preventDefault();
     if (!editingStaff) return;
+    setEditError('');
+    setEditSubmitting(true);
     try {
-      await staffApi.update(editingStaff.id, {
-        fullName: editingStaff.fullName,
-        phone: editingStaff.phone,
-        designation: editingStaff.designation,
-        storeHub: editingStaff.storeHub
+      await staffApi.updateContact(editingStaff.id, {
+        fullName: editingStaff.fullName?.trim(),
+        email: editingStaff.email?.trim() || null,
+        phone: editingStaff.phone?.trim() || null,
+        designation: editingStaff.designation?.trim() || null,
+        storeHub: editingStaff.storeHub?.trim() || null
       });
-      showNotification(`Updated profile for ${editingStaff.fullName}.`);
+      showNotification(`Updated contact details for ${editingStaff.fullName}.`);
       setEditingStaff(null);
       await loadData();
     } catch (err) {
-      alert(err.message || 'Failed to update staff member.');
+      console.error('Contact update error:', err);
+      setEditError(err.message || 'Failed to update contact details.');
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -807,26 +848,31 @@ export default function StaffManagementPage() {
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                               {/* Edit details */}
-                              <button
-                                type="button"
-                                title="Edit details"
-                                onClick={() => setEditingStaff({ ...person })}
-                                style={{
-                                  backgroundColor: '#f8fafc',
-                                  border: '1px solid #cbd5e1',
-                                  borderRadius: '6px',
-                                  padding: '0.35rem 0.55rem',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.25rem',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 700,
-                                  color: '#334155'
-                                }}
-                              >
-                                <Edit2 size={13} /> Edit
-                              </button>
+                              {canEditPerson(person) && (
+                                <button
+                                  type="button"
+                                  title="Edit contact information"
+                                  onClick={() => {
+                                    setEditError('');
+                                    setEditingStaff({ ...person });
+                                  }}
+                                  style={{
+                                    backgroundColor: '#f8fafc',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '6px',
+                                    padding: '0.35rem 0.55rem',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    color: '#334155'
+                                  }}
+                                >
+                                  <Edit2 size={13} /> Edit
+                                </button>
+                              )}
 
                               {/* Change Role (blocked for Primary Owner) */}
                               {!isPO && (
@@ -1530,11 +1576,11 @@ export default function StaffManagementPage() {
       )}
 
       {/* ======================================================== */}
-      {/* MODAL: EDIT STAFF DETAILS */}
+      {/* MODAL: EDIT STAFF CONTACT DETAILS */}
       {/* ======================================================== */}
       {editingStaff && (
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="owner-card" style={{ maxWidth: '500px', width: '100%', padding: '2rem', position: 'relative' }}>
+          <div className="owner-card" style={{ maxWidth: '520px', width: '100%', padding: '2rem', position: 'relative' }}>
             <button
               type="button"
               onClick={() => setEditingStaff(null)}
@@ -1543,9 +1589,33 @@ export default function StaffManagementPage() {
               <X size={20} />
             </button>
 
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '0 0 1rem 0' }}>
-              Edit Details: {editingStaff.fullName}
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+              Edit Contact Information
             </h3>
+            <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '0 0 1.25rem 0' }}>
+              Updating contact details for <strong>{editingStaff.fullName}</strong> ({editingStaff.role})
+            </p>
+
+            {editError && (
+              <div
+                role="alert"
+                style={{
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  color: '#991b1b',
+                  fontSize: '0.85rem'
+                }}
+              >
+                <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+                <span>{editError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleEditStaffSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1556,10 +1626,42 @@ export default function StaffManagementPage() {
                   <input
                     type="text"
                     className="form-input"
-                    value={editingStaff.fullName}
+                    value={editingStaff.fullName || ''}
                     onChange={(e) => setEditingStaff({ ...editingStaff, fullName: e.target.value })}
                     required
                   />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                      Email Address *
+                    </label>
+                    {!(isPrimaryOwner || owner?.id === editingStaff.id) && (
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontStyle: 'italic' }}>
+                        Primary Owner only
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={editingStaff.email || ''}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, email: e.target.value })}
+                    disabled={!(isPrimaryOwner || owner?.id === editingStaff.id)}
+                    readOnly={!(isPrimaryOwner || owner?.id === editingStaff.id)}
+                    style={!(isPrimaryOwner || owner?.id === editingStaff.id) ? { backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' } : {}}
+                    required
+                  />
+                  {!(isPrimaryOwner || owner?.id === editingStaff.id) ? (
+                    <small style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                      Only the Primary Owner can update another user's email address.
+                    </small>
+                  ) : (
+                    <small style={{ color: '#059669', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                      Primary Owner can update this account's login email address.
+                    </small>
+                  )}
                 </div>
 
                 <div>
@@ -1569,9 +1671,13 @@ export default function StaffManagementPage() {
                   <input
                     type="tel"
                     className="form-input"
+                    placeholder="+91 XXXXX XXXXX"
                     value={editingStaff.phone || ''}
                     onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
                   />
+                  <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                    Enter 10-digit Indian mobile number (e.g., 9876543210 or +91 98765 43210).
+                  </small>
                 </div>
 
                 <div>
@@ -1605,11 +1711,28 @@ export default function StaffManagementPage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                  <button type="button" onClick={() => setEditingStaff(null)} className="btn btn-secondary">
+                  <button
+                    type="button"
+                    onClick={() => setEditingStaff(null)}
+                    className="btn btn-secondary"
+                    disabled={editSubmitting}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary">
-                    Save Changes
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={editSubmitting}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    {editSubmitting ? (
+                      <>
+                        <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>Save Changes</span>
+                    )}
                   </button>
                 </div>
               </div>
