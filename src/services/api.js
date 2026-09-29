@@ -195,5 +195,91 @@ export const authApi = {
     })
 };
 
+/**
+ * Staff Management API Endpoints
+ */
+export const staffApi = {
+  getAll: () => request('/api/staff'),
+  getById: (id) => request(`/api/staff/${id}`),
+  create: (data) =>
+    request('/api/staff', {
+      method: 'POST',
+      body: data
+    }),
+  update: (id, data) =>
+    request(`/api/staff/${id}`, {
+      method: 'PUT',
+      body: data
+    }),
+  changeRole: (id, role) =>
+    request(`/api/staff/${id}/role`, {
+      method: 'PATCH',
+      body: { role }
+    }),
+  changeStatus: (id, status) =>
+    request(`/api/staff/${id}/status`, {
+      method: 'PATCH',
+      body: { status }
+    }),
+  changeDesignation: (id, designation) =>
+    request(`/api/staff/${id}/designation`, {
+      method: 'PATCH',
+      body: { designation }
+    }),
+  updatePermissions: (id, permissions) =>
+    request(`/api/staff/${id}/permissions`, {
+      method: 'PATCH',
+      body: { permissions }
+    }),
+  remove: (id) =>
+    request(`/api/staff/${id}`, {
+      method: 'DELETE'
+    })
+};
+
+/**
+ * Ownership Management API Endpoints
+ */
+export const ownershipApi = {
+  getPrimaryOwner: () => request('/api/ownership/primary-owner'),
+  getEligibleOwners: () => request('/api/ownership/eligible-owners'),
+  transfer: (data) =>
+    request('/api/ownership/transfer', {
+      method: 'POST',
+      body: data
+    }),
+  getAuditLogs: () => request('/api/ownership/audit-logs')
+};
+
+/**
+ * Business Designations API Endpoints
+ */
+export const designationApi = {
+  getAll: () => request('/api/designations'),
+  create: (data) =>
+    request('/api/designations', {
+      method: 'POST',
+      body: data
+    }),
+  update: (id, data) =>
+    request(`/api/designations/${id}`, {
+      method: 'PUT',
+      body: data
+    }),
+  delete: (id) =>
+    request(`/api/designations/${id}`, {
+      method: 'DELETE'
+    })
+};
+
 export { API_BASE_URL };
-export default { categoryApi, productApi, orderApi, authApi, API_BASE_URL };
+export default {
+  categoryApi,
+  productApi,
+  orderApi,
+  authApi,
+  staffApi,
+  ownershipApi,
+  designationApi,
+  API_BASE_URL
+};

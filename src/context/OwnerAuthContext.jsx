@@ -59,17 +59,22 @@ export function OwnerAuthProvider({ children }) {
     if (token) {
       authApi.getMe()
         .then((user) => {
-          if (user && (user.role === 'OWNER' || user.role === 'ADMIN')) {
+          if (user && (user.role === 'OWNER' || user.role === 'ADMIN' || user.role === 'STAFF')) {
             setOwner((prev) => {
               const savedAvatar = getSavedOwnerAvatar(user) || prev?.profilePicture || null;
               const updated = {
                 ...prev,
                 id: user.id,
-                name: user.fullName || prev?.name || 'Suresh Verma',
-                fullName: user.fullName || prev?.fullName || 'Suresh Verma',
+                name: user.fullName || prev?.name || 'Store User',
+                fullName: user.fullName || prev?.fullName || 'Store User',
                 email: user.email,
                 phone: user.phone,
                 role: user.role,
+                primaryOwner: !!user.primaryOwner,
+                status: user.status || 'ACTIVE',
+                designation: user.designation || prev?.designation || (user.role === 'OWNER' ? 'Store Owner' : 'Staff'),
+                storeHub: user.storeHub || prev?.storeHub || 'Flagship Hub',
+                permissions: user.permissions || prev?.permissions || [],
                 gender: user.gender !== undefined ? user.gender : (prev?.gender || null),
                 dateOfBirth: user.dateOfBirth !== undefined ? user.dateOfBirth : (prev?.dateOfBirth || null),
                 storeName: 'Grocery Choice - Flagship Hub',
@@ -103,20 +108,25 @@ export function OwnerAuthProvider({ children }) {
     try {
       const data = await authApi.login(identifier, password);
       if (data && data.token && data.user) {
-        if (data.user.role !== 'OWNER' && data.user.role !== 'ADMIN') {
-          return { success: false, error: 'Access restricted to store owners and managers.' };
+        if (data.user.role !== 'OWNER' && data.user.role !== 'ADMIN' && data.user.role !== 'STAFF') {
+          return { success: false, error: 'Access restricted to store staff, managers, and owners.' };
         }
 
         const savedAvatar = getSavedOwnerAvatar(data.user);
         const userObj = {
           id: data.user.id,
-          name: data.user.fullName || 'Suresh Verma',
-          fullName: data.user.fullName || 'Suresh Verma',
+          name: data.user.fullName || 'Store User',
+          fullName: data.user.fullName || 'Store User',
           email: data.user.email,
           phone: data.user.phone,
           gender: data.user.gender || null,
           dateOfBirth: data.user.dateOfBirth || null,
           role: data.user.role,
+          primaryOwner: !!data.user.primaryOwner,
+          status: data.user.status || 'ACTIVE',
+          designation: data.user.designation || (data.user.role === 'OWNER' ? 'Store Owner' : 'Staff'),
+          storeHub: data.user.storeHub || 'Flagship Hub',
+          permissions: data.user.permissions || [],
           storeName: 'Grocery Choice - Flagship Hub',
           authMethod: 'password',
           profilePicture: savedAvatar,
@@ -140,20 +150,25 @@ export function OwnerAuthProvider({ children }) {
   const loginWithOtp = (authResult) => {
     // Check if real authResult from verifyOtp endpoint
     if (authResult && authResult.token && authResult.user) {
-      if (authResult.user.role !== 'OWNER' && authResult.user.role !== 'ADMIN') {
-        return { success: false, error: 'Access restricted to store owners and managers.' };
+      if (authResult.user.role !== 'OWNER' && authResult.user.role !== 'ADMIN' && authResult.user.role !== 'STAFF') {
+        return { success: false, error: 'Access restricted to store staff, managers, and owners.' };
       }
 
       const savedAvatar = getSavedOwnerAvatar(authResult.user);
       const userObj = {
         id: authResult.user.id,
-        name: authResult.user.fullName || 'Suresh Verma',
-        fullName: authResult.user.fullName || 'Suresh Verma',
+        name: authResult.user.fullName || 'Store User',
+        fullName: authResult.user.fullName || 'Store User',
         email: authResult.user.email,
         phone: authResult.user.phone,
         gender: authResult.user.gender || null,
         dateOfBirth: authResult.user.dateOfBirth || null,
         role: authResult.user.role,
+        primaryOwner: !!authResult.user.primaryOwner,
+        status: authResult.user.status || 'ACTIVE',
+        designation: authResult.user.designation || (authResult.user.role === 'OWNER' ? 'Store Owner' : 'Staff'),
+        storeHub: authResult.user.storeHub || 'Flagship Hub',
+        permissions: authResult.user.permissions || [],
         storeName: 'Grocery Choice - Flagship Hub',
         authMethod: 'otp',
         profilePicture: savedAvatar,

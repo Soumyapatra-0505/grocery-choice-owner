@@ -17,12 +17,13 @@ import InventoryPage from './pages/InventoryPage';
 import OrdersPage from './pages/OrdersPage';
 import CustomersPage from './pages/CustomersPage';
 import ReportsPage from './pages/ReportsPage';
+import StaffManagementPage from './pages/StaffManagementPage';
 import ProfilePage from './pages/ProfilePage';
 
 // Protected Route Guard
 function ProtectedRoute({ children }) {
   const { isAuthenticated, owner } = useOwnerAuth();
-  if (!isAuthenticated || !owner || (owner.role !== 'OWNER' && owner.role !== 'ADMIN')) {
+  if (!isAuthenticated || !owner || (owner.role !== 'OWNER' && owner.role !== 'ADMIN' && owner.role !== 'STAFF')) {
     return <Navigate to="/login" replace />;
   }
   return children;
@@ -55,6 +56,7 @@ export default function App() {
               <Route path="orders" element={<OrdersPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="staff" element={<StaffManagementPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
 

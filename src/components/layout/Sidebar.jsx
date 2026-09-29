@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Users,
   BarChart3,
+  ShieldCheck,
   User,
   LogOut
 } from 'lucide-react';
@@ -46,6 +47,7 @@ export default function Sidebar() {
     },
     { to: '/customers', label: 'Customers', icon: <Users size={19} /> },
     { to: '/reports', label: 'Reports', icon: <BarChart3 size={19} /> },
+    { to: '/staff', label: 'Staff Management', icon: <ShieldCheck size={19} /> },
     { to: '/profile', label: 'Profile', icon: <User size={19} /> }
   ];
 
@@ -178,10 +180,10 @@ export default function Sidebar() {
           </div>
           <div className="sidebar-text-hide" style={{ minWidth: 0 }}>
             <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {owner?.fullName || owner?.name || 'Store Owner'}
+              {owner?.fullName || owner?.name || 'Store User'}
             </div>
             <div style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {owner?.role || 'OWNER'}
+              {owner?.primaryOwner ? 'Primary Owner' : (owner?.designation || owner?.role || 'Staff')}
             </div>
           </div>
         </Link>
