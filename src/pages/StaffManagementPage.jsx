@@ -81,6 +81,8 @@ export default function StaffManagementPage() {
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [newEmailInput, setNewEmailInput] = useState('');
+  const [isChangingPhone, setIsChangingPhone] = useState(false);
+  const [newPhoneInput, setNewPhoneInput] = useState('');
 
   const isPrimaryOwner = !!owner?.primaryOwner;
   const isOwner = owner?.role === 'OWNER';
@@ -212,10 +214,11 @@ export default function StaffManagementPage() {
     setEditSubmitting(true);
     try {
       const emailPayload = isChangingEmail ? (newEmailInput.trim() || null) : null;
+      const phonePayload = isChangingPhone ? (newPhoneInput.trim() || null) : null;
       await staffApi.updateContact(editingStaff.id, {
         fullName: editingStaff.fullName?.trim(),
         email: emailPayload,
-        phone: editingStaff.phone?.trim() || null,
+        phone: phonePayload,
         designation: editingStaff.designation?.trim() || null,
         storeHub: editingStaff.storeHub?.trim() || null
       });
@@ -223,10 +226,12 @@ export default function StaffManagementPage() {
       setEditingStaff(null);
       setIsChangingEmail(false);
       setNewEmailInput('');
+      setIsChangingPhone(false);
+      setNewPhoneInput('');
       await loadData();
     } catch (err) {
       console.error('Contact update error:', err);
-      setEditError(err.message || 'Failed to update contact details.');
+      setEditError(err.message || 'Failed to update contact details. Please try again.');
     } finally {
       setEditSubmitting(false);
     }
@@ -861,6 +866,8 @@ export default function StaffManagementPage() {
                                     setEditError('');
                                     setIsChangingEmail(false);
                                     setNewEmailInput('');
+                                    setIsChangingPhone(false);
+                                    setNewPhoneInput('');
                                     setEditingStaff({ ...person });
                                   }}
                                   style={{
@@ -1594,6 +1601,8 @@ export default function StaffManagementPage() {
                 setEditingStaff(null);
                 setIsChangingEmail(false);
                 setNewEmailInput('');
+                setIsChangingPhone(false);
+                setNewPhoneInput('');
               }}
               style={{ position: 'absolute', right: '1.25rem', top: '1.25rem', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
             >
@@ -1708,19 +1717,67 @@ export default function StaffManagementPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    placeholder="+91 XXXXX XXXXX"
-                    value={editingStaff.phone || ''}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
-                  />
-                  <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
-                    Enter 10-digit Indian mobile number (e.g., 9876543210 or +91 98765 43210).
-                  </small>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                      Phone Number
+                    </label>
+                    {isPrimaryOwner || owner?.id === editingStaff.id ? (
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#059669', cursor: 'pointer', fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          id="toggle-change-phone"
+                          checked={isChangingPhone}
+                          onChange={(e) => {
+                            setIsChangingPhone(e.target.checked);
+                            setEditError('');
+                            if (!e.target.checked) {
+                              setNewPhoneInput('');
+                            }
+                          }}
+                        />
+                        <span>Change Phone Number</span>
+                      </label>
+                    ) : (
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontStyle: 'italic' }}>
+                        Primary Owner only
+                      </span>
+                    )}
+                  </div>
+
+                  {!isChangingPhone ? (
+                    <div>
+                      <input
+                        type="tel"
+                        className="form-input"
+                        value={editingStaff.phone || 'Not provided'}
+                        disabled
+                        readOnly
+                        style={{ backgroundColor: '#f8fafc', color: '#64748b', cursor: 'not-allowed' }}
+                      />
+                      <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                        Current phone number (unchanged). Check &quot;Change Phone Number&quot; above to assign a new number.
+                      </small>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="tel"
+                        id="edit-staff-new-phone"
+                        className="form-input"
+                        placeholder="Enter new 10-digit mobile number"
+                        value={newPhoneInput}
+                        onChange={(e) => {
+                          setNewPhoneInput(e.target.value);
+                          setEditError('');
+                        }}
+                        required={isChangingPhone}
+                        autoFocus
+                      />
+                      <small style={{ color: '#059669', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                        Enter a new, unused 10-digit Indian mobile number. Any existing number will be rejected.
+                      </small>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1760,6 +1817,8 @@ export default function StaffManagementPage() {
                       setEditingStaff(null);
                       setIsChangingEmail(false);
                       setNewEmailInput('');
+                      setIsChangingPhone(false);
+                      setNewPhoneInput('');
                     }}
                     className="btn btn-secondary"
                     disabled={editSubmitting}
