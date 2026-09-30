@@ -703,7 +703,7 @@ export default function StaffManagementPage() {
 
           {/* Staff Table */}
           <div className="owner-card">
-            <div className="owner-table-container">
+            <div className="owner-table-container desktop-only-table">
               <table className="owner-table">
                 <thead>
                   <tr>
@@ -996,6 +996,233 @@ export default function StaffManagementPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="mobile-only-cards" style={{ padding: '0.75rem' }}>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                  <RefreshCw size={16} className="spin" style={{ margin: '0 auto 0.5rem' }} />
+                  <div>Loading staff members...</div>
+                </div>
+              ) : filteredStaff.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                  No staff members found matching your search.
+                </div>
+              ) : (
+                filteredStaff.map((person) => {
+                  const isPO = !!person.primaryOwner;
+                  return (
+                    <div key={person.id} className="mobile-data-card" style={{ opacity: person.status === 'DISABLED' ? 0.65 : 1 }}>
+                      <div className="mobile-data-card-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <div
+                            style={{
+                              width: '38px',
+                              height: '38px',
+                              borderRadius: '50%',
+                              backgroundColor: isPO ? '#f59e0b' : person.role === 'OWNER' ? '#9333ea' : person.role === 'ADMIN' ? '#2563eb' : '#059669',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: '0.95rem',
+                              flexShrink: 0
+                            }}
+                          >
+                            {isPO ? <Crown size={18} /> : person.fullName?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span>{person.fullName}</span>
+                              {isPO && (
+                                <span
+                                  title="Primary Owner of Grocery Choice"
+                                  style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 800,
+                                    backgroundColor: '#fef3c7',
+                                    color: '#92400e',
+                                    padding: '0.1rem 0.4rem',
+                                    borderRadius: '9999px',
+                                    border: '1px solid #fde68a',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.2rem'
+                                  }}
+                                >
+                                  <Crown size={10} /> Primary
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>ID #{person.id} &bull; {person.storeHub || 'Flagship Hub'}</div>
+                          </div>
+                        </div>
+
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            padding: '0.15rem 0.55rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            backgroundColor: person.status === 'ACTIVE' ? '#dcfce7' : '#fee2e2',
+                            color: person.status === 'ACTIVE' ? '#15803d' : '#b91c1c'
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: person.status === 'ACTIVE' ? '#16a34a' : '#dc2626'
+                            }}
+                          />
+                          {person.status}
+                        </span>
+                      </div>
+
+                      <div className="mobile-data-card-body">
+                        <div className="mobile-data-card-row">
+                          <span className="mobile-data-card-label">Role / Title</span>
+                          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '9999px',
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                backgroundColor: isPO ? '#fef3c7' : person.role === 'OWNER' ? '#f3e8ff' : person.role === 'ADMIN' ? '#dbeafe' : '#ccfbf1',
+                                color: isPO ? '#92400e' : person.role === 'OWNER' ? '#7e22ce' : person.role === 'ADMIN' ? '#1d4ed8' : '#0f766e',
+                                border: isPO ? '1px solid #fde68a' : person.role === 'OWNER' ? '1px solid #e9d5ff' : person.role === 'ADMIN' ? '1px solid #bfdbfe' : '1px solid #99f6e4'
+                              }}
+                            >
+                              {person.role}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                color: '#334155',
+                                backgroundColor: '#f1f5f9',
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '6px'
+                              }}
+                            >
+                              {person.designation || 'Not Assigned'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mobile-data-card-row">
+                          <span className="mobile-data-card-label">Email</span>
+                          <span style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 600 }}>{person.email}</span>
+                        </div>
+
+                        <div className="mobile-data-card-row">
+                          <span className="mobile-data-card-label">Phone</span>
+                          <span style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 600 }}>{person.phone || 'No phone'}</span>
+                        </div>
+                      </div>
+
+                      <div className="mobile-data-card-actions">
+                        {/* Edit details */}
+                        {canEditPerson(person) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditError('');
+                              setIsChangingEmail(false);
+                              setNewEmailInput('');
+                              setIsChangingPhone(false);
+                              setNewPhoneInput('');
+                              setEditingStaff({ ...person });
+                            }}
+                            className="btn btn-outline btn-sm"
+                            style={{ flex: 1, minHeight: '36px', fontSize: '0.78rem' }}
+                          >
+                            <Edit2 size={13} />
+                            <span>Edit</span>
+                          </button>
+                        )}
+
+                        {/* Change Role (blocked for Primary Owner) */}
+                        {!isPO && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRoleChangeStaff(person);
+                              setNewRoleSelection(person.role);
+                            }}
+                            className="btn btn-outline btn-sm"
+                            style={{ flex: 1, minHeight: '36px', fontSize: '0.78rem', color: '#4338ca' }}
+                          >
+                            <Shield size={13} />
+                            <span>Role</span>
+                          </button>
+                        )}
+
+                        {/* Change Designation */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDesignationChangeStaff(person);
+                            setNewDesignationSelection(person.designation || '');
+                          }}
+                          className="btn btn-outline btn-sm"
+                          style={{ flex: 1, minHeight: '36px', fontSize: '0.78rem', color: '#0369a1' }}
+                        >
+                          <Briefcase size={13} />
+                          <span>Title</span>
+                        </button>
+
+                        {/* Toggle Status */}
+                        {!isPO && person.id !== owner?.id && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(person)}
+                            className="btn btn-sm"
+                            style={{
+                              minHeight: '36px',
+                              fontSize: '0.78rem',
+                              backgroundColor: person.status === 'ACTIVE' ? '#fff1f2' : '#f0fdf4',
+                              border: person.status === 'ACTIVE' ? '1px solid #fecdd3' : '1px solid #bbf7d0',
+                              color: person.status === 'ACTIVE' ? '#be123c' : '#15803d'
+                            }}
+                          >
+                            {person.status === 'ACTIVE' ? <UserX size={13} /> : <UserCheck size={13} />}
+                            <span>{person.status === 'ACTIVE' ? 'Disable' : 'Enable'}</span>
+                          </button>
+                        )}
+
+                        {/* Revoke */}
+                        {!isPO && (
+                          <button
+                            type="button"
+                            onClick={() => setRevokeStaff(person)}
+                            className="btn btn-sm"
+                            style={{
+                              minHeight: '36px',
+                              padding: '0.35rem 0.55rem',
+                              backgroundColor: '#fff1f2',
+                              border: '1px solid #fecdd3',
+                              color: '#b91c1c'
+                            }}
+                            title="Revoke access"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

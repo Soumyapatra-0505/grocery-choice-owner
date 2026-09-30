@@ -102,8 +102,8 @@ export default function ProductsPage() {
         name: product.name,
         description: product.description,
         sku: product.sku,
-        categoryId: product.categoryId,
-        imageUrl: product.imageUrl,
+        categoryId: product.categoryId || (product.category && product.category.id),
+        imageUrl: product.imageUrl || product.image,
         unit: product.unit,
         mrp: product.mrp,
         sellingPrice: product.sellingPrice,
@@ -116,24 +116,36 @@ export default function ProductsPage() {
     }
   };
 
-  // Open Dedicated Stock Modal
+  // Quick Stock stepper click
+  const handleQuickStockChange = async (productId, currentStock, delta) => {
+    const nextVal = Math.max(0, currentStock + delta);
+    try {
+      await updateStock(productId, nextVal);
+    } catch (err) {
+      alert(`Failed to update stock: ${err.message}`);
+    }
+  };
+
+  // Open Stock Modal
   const handleOpenStockModal = (product) => {
     setStockModalProduct(product);
     setNewStockInput(String(product.stockQuantity));
     setStockModalError('');
   };
 
-  // Submit Dedicated Stock Modal (PATCH /api/products/{id}/stock)
+  // Submit dedicated Stock Modal
   const handleStockModalSubmit = async (e) => {
     e.preventDefault();
-    if (newStockInput === '' || Number(newStockInput) < 0) {
-      setStockModalError('Stock quantity cannot be negative.');
+    const count = parseInt(newStockInput, 10);
+    if (isNaN(count) || count < 0) {
+      setStockModalError('Stock count must be a non-negative number.');
       return;
     }
+
     try {
       setIsUpdatingStock(true);
-      await updateStock(stockModalProduct.id, Number(newStockInput));
-      showSuccess(`Stock for "${stockModalProduct.name}" updated to ${newStockInput} units.`);
+      await updateStock(stockModalProduct.id, count);
+      showSuccess(`Updated inventory for "${stockModalProduct.name}" to ${count} units.`);
       setStockModalProduct(null);
     } catch (err) {
       setStockModalError(err.message || 'Failed to update stock.');
@@ -142,54 +154,42 @@ export default function ProductsPage() {
     }
   };
 
-  // Quick Inline Stepper Stock Update
-  const handleQuickStockChange = async (productId, currentCount, delta) => {
-    const targetCount = Math.max(0, currentCount + delta);
-    try {
-      await updateStock(productId, targetCount);
-    } catch (err) {
-      alert(`Stock update failed: ${err.message}`);
-    }
-  };
-
-  // Client-side filtering for secondary criteria (stock status, active/inactive)
+  // In-memory Filtered list based on current selects
   const filteredProducts = products.filter((p) => {
-    // Stock filter
-    if (stockFilter === 'in_stock' && p.stockQuantity <= 10) return false;
-    if (stockFilter === 'low_stock' && (p.stockQuantity <= 0 || p.stockQuantity > 10)) return false;
-    if (stockFilter === 'out_of_stock' && p.stockQuantity !== 0) return false;
-
-    // Active filter
     if (activeFilter === 'active' && p.active === false) return false;
     if (activeFilter === 'inactive' && p.active !== false) return false;
+
+    if (stockFilter === 'in_stock' && p.stockQuantity <= 10) return false;
+    if (stockFilter === 'low_stock' && (p.stockQuantity === 0 || p.stockQuantity > 10)) return false;
+    if (stockFilter === 'out_of_stock' && p.stockQuantity > 0) return false;
 
     return true;
   });
 
   return (
     <div>
-      {/* Header */}
+      {/* Page Title & Actions */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>
-            Products Management ({products.length})
+            Products Catalog ({filteredProducts.length})
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.88rem' }}>
-            Manage catalog items, inventory levels, prices, and SKU details connected directly to MySQL backend.
+            Manage catalog items, pricing, package units, and live inventory availability.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={loadInitialData}
-            className="btn btn-outline"
+            className="btn btn-outline btn-sm"
             title="Refresh from MySQL"
           >
             <RefreshCw size={15} />
             <span>Refresh</span>
           </button>
-          <Link to="/products/add" className="btn btn-primary">
+          <Link to="/products/add" className="btn btn-primary btn-sm">
             <Plus size={16} />
             <span>Add New Product</span>
           </Link>
@@ -232,7 +232,8 @@ export default function ProductsPage() {
             padding: '1rem 1.25rem',
             borderRadius: '10px',
             marginBottom: '1.5rem',
-            gap: '1rem'
+            gap: '1rem',
+            flexWrap: 'wrap'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -265,13 +266,13 @@ export default function ProductsPage() {
         }}
       >
         {/* Search */}
-        <form onSubmit={handleSearchSubmit} style={{ position: 'relative', flex: '1 1 240px' }}>
+        <form onSubmit={handleSearchSubmit} style={{ position: 'relative', flex: '1 1 240px', minWidth: '200px' }}>
           <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             className="form-input"
-            style={{ paddingLeft: '2.5rem', paddingRight: searchQuery ? '2.5rem' : '1rem' }}
-            placeholder="Search by title, SKU, or description... (Press Enter)"
+            style={{ paddingLeft: '2.5rem', paddingRight: searchQuery ? '2.5rem' : '1rem', width: '100%' }}
+            placeholder="Search by title, SKU, or description... (Enter)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -298,11 +299,12 @@ export default function ProductsPage() {
         </form>
 
         {/* Category Filter */}
-        <div style={{ flex: '0 1 200px' }}>
+        <div style={{ flex: '1 1 180px', minWidth: '150px' }}>
           <select
             className="form-select"
             value={selectedCategory}
             onChange={(e) => handleCategoryChange(e.target.value)}
+            style={{ width: '100%' }}
           >
             <option value="all">All Categories ({categories.length})</option>
             {categories.map((c) => (
@@ -314,25 +316,27 @@ export default function ProductsPage() {
         </div>
 
         {/* Stock Status Filter */}
-        <div style={{ flex: '0 1 180px' }}>
+        <div style={{ flex: '1 1 160px', minWidth: '140px' }}>
           <select
             className="form-select"
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value)}
+            style={{ width: '100%' }}
           >
-            <option value="all">All Stock Statuses</option>
-            <option value="in_stock">In Stock (&gt; 10 units)</option>
-            <option value="low_stock">Low Stock (1-10 units)</option>
-            <option value="out_of_stock">Out of Stock (0 units)</option>
+            <option value="all">All Stock Levels</option>
+            <option value="in_stock">In Stock (&gt; 10)</option>
+            <option value="low_stock">Low Stock (1-10)</option>
+            <option value="out_of_stock">Out of Stock (0)</option>
           </select>
         </div>
 
         {/* Active / Inactive Filter */}
-        <div style={{ flex: '0 1 150px' }}>
+        <div style={{ flex: '1 1 140px', minWidth: '130px' }}>
           <select
             className="form-select"
             value={activeFilter}
             onChange={(e) => setActiveFilter(e.target.value)}
+            style={{ width: '100%' }}
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
@@ -350,10 +354,11 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Products Table */}
+      {/* Products Display (Table on Desktop, Cards on Mobile) */}
       {!loading && (
         <div className="owner-card">
-          <div className="owner-table-container">
+          {/* Desktop Table View */}
+          <div className="owner-table-container desktop-only-table">
             <table className="owner-table">
               <thead>
                 <tr>
@@ -376,7 +381,7 @@ export default function ProductsPage() {
                       <div style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
                         {searchQuery || selectedCategory !== 'all' || stockFilter !== 'all' || activeFilter !== 'all'
                           ? 'Try clearing your search query or filter selection.'
-                          : 'Your MySQL database does not have any products yet. Click "Add New Product" to create one.'}
+                          : 'Your database does not have any products yet. Click "Add New Product" to create one.'}
                       </div>
                     </td>
                   </tr>
@@ -582,13 +587,212 @@ export default function ProductsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Cards View */}
+          <div className="mobile-only-cards" style={{ padding: '0.75rem' }}>
+            {filteredProducts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#64748b' }}>
+                <Package size={36} color="#94a3b8" style={{ margin: '0 auto 0.75rem' }} />
+                <div style={{ fontWeight: 700, color: '#0f172a' }}>No products found</div>
+              </div>
+            ) : (
+              filteredProducts.map((product) => (
+                <div key={product.id} className="mobile-data-card">
+                  <div className="mobile-data-card-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                      <img
+                        src={product.imageUrl || product.image}
+                        alt={product.name}
+                        style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '8px',
+                          objectFit: 'cover',
+                          backgroundColor: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          flexShrink: 0
+                        }}
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200';
+                        }}
+                      />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {product.name}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.15rem' }}>
+                          <span>SKU: {product.sku || 'N/A'}</span>
+                          <span>&bull;</span>
+                          <span>{product.unit}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Badge
+                      variant={
+                        product.active === false
+                          ? 'default'
+                          : product.stockQuantity === 0
+                          ? 'danger'
+                          : product.stockQuantity <= 10
+                          ? 'warning'
+                          : 'success'
+                      }
+                    >
+                      {product.active === false
+                        ? 'Inactive'
+                        : product.stockQuantity === 0
+                        ? 'Out of Stock'
+                        : product.stockQuantity <= 10
+                        ? `${product.stockQuantity} Left`
+                        : `${product.stockQuantity} In Stock`}
+                    </Badge>
+                  </div>
+
+                  <div className="mobile-data-card-body">
+                    <div className="mobile-data-card-row">
+                      <span className="mobile-data-card-label">Category</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', backgroundColor: '#f1f5f9', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+                        {product.categoryName}
+                      </span>
+                    </div>
+
+                    <div className="mobile-data-card-row">
+                      <span className="mobile-data-card-label">Price</span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                        <span style={{ fontWeight: 800, color: '#059669', fontSize: '1.05rem' }}>
+                          ₹{product.sellingPrice}
+                        </span>
+                        <span style={{ color: '#94a3b8', textDecoration: 'line-through', fontSize: '0.82rem' }}>
+                          ₹{product.mrp}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mobile-data-card-row">
+                      <span className="mobile-data-card-label">Stock Stepper</span>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickStockChange(product.id, product.stockQuantity, -1)}
+                          disabled={product.stockQuantity <= 0}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            color: '#475569',
+                            cursor: product.stockQuantity <= 0 ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            opacity: product.stockQuantity <= 0 ? 0.3 : 1
+                          }}
+                          aria-label="Decrease stock"
+                        >
+                          <MinusCircle size={16} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenStockModal(product)}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            padding: '0.2rem 0.6rem',
+                            fontWeight: 800,
+                            fontSize: '0.88rem',
+                            color: product.stockQuantity === 0 ? '#ef4444' : product.stockQuantity <= 10 ? '#d97706' : '#059669',
+                            cursor: 'pointer',
+                            minWidth: '40px',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {product.stockQuantity}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleQuickStockChange(product.id, product.stockQuantity, 1)}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            color: '#059669',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px'
+                          }}
+                          aria-label="Increase stock"
+                        >
+                          <PlusCircle size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mobile-data-card-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenStockModal(product)}
+                      className="btn btn-outline btn-sm"
+                      style={{ flex: 1, minHeight: '38px' }}
+                    >
+                      <Boxes size={14} />
+                      <span>Stock</span>
+                    </button>
+
+                    <Link
+                      to={`/products/edit/${product.id}`}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, minHeight: '38px' }}
+                    >
+                      <Edit2 size={14} />
+                      <span>Edit</span>
+                    </Link>
+
+                    {product.active === false ? (
+                      <button
+                        type="button"
+                        onClick={() => handleReactivate(product)}
+                        className="btn btn-sm"
+                        style={{
+                          backgroundColor: '#ecfdf5',
+                          color: '#059669',
+                          border: '1px solid #a7f3d0',
+                          minHeight: '38px'
+                        }}
+                      >
+                        Reactivate
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteModalProduct(product)}
+                        className="btn btn-outline btn-sm"
+                        style={{ color: '#ef4444', minHeight: '38px', padding: '0.35rem 0.65rem' }}
+                        title="Deactivate"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
       {/* Dedicated Stock Update Modal */}
       {stockModalProduct && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ padding: '1.75rem', maxWidth: '440px' }}>
+          <div className="modal-content" style={{ padding: '1.5rem', maxWidth: '440px', width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Boxes size={20} color="#059669" />
@@ -599,7 +803,8 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setStockModalProduct(null)}
-                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.35rem' }}
+                aria-label="Close modal"
               >
                 <X size={20} />
               </button>
@@ -654,12 +859,13 @@ export default function ProductsPage() {
                 {stockModalError && <span className="form-error">{stockModalError}</span>}
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   className="btn btn-outline"
                   onClick={() => setStockModalProduct(null)}
                   disabled={isUpdatingStock}
+                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
@@ -667,8 +873,9 @@ export default function ProductsPage() {
                   type="submit"
                   className="btn btn-primary"
                   disabled={isUpdatingStock}
+                  style={{ flex: 1 }}
                 >
-                  {isUpdatingStock ? 'Updating...' : 'Save Stock Quantity'}
+                  {isUpdatingStock ? 'Updating...' : 'Save Stock'}
                 </button>
               </div>
             </form>
@@ -679,7 +886,7 @@ export default function ProductsPage() {
       {/* Delete / Deactivate Confirmation Modal */}
       {deleteModalProduct && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ padding: '1.75rem', maxWidth: '440px' }}>
+          <div className="modal-content" style={{ padding: '1.5rem', maxWidth: '440px', width: '100%' }}>
             <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
               <div
                 style={{
@@ -705,12 +912,12 @@ export default function ProductsPage() {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn btn-outline"
                 onClick={() => setDeleteModalProduct(null)}
-                style={{ flex: 1 }}
+                style={{ flex: 1, minWidth: '120px' }}
               >
                 Cancel
               </button>
@@ -718,7 +925,7 @@ export default function ProductsPage() {
                 type="button"
                 className="btn btn-danger"
                 onClick={handleDeleteConfirm}
-                style={{ flex: 1 }}
+                style={{ flex: 1, minWidth: '120px' }}
               >
                 Confirm Deactivation
               </button>

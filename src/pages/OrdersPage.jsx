@@ -110,14 +110,14 @@ export default function OrdersPage() {
             Customer Orders ({orders.length})
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.88rem' }}>
-            Inspect customer orders from MySQL, review item breakdowns, and update delivery fulfillment.
+            Inspect customer orders, review item breakdowns, and update delivery fulfillment.
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => fetchOrders()}
-          className="btn btn-secondary"
+          className="btn btn-secondary btn-sm"
           disabled={loading}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
         >
@@ -170,12 +170,12 @@ export default function OrdersPage() {
           justifyContent: 'space-between'
         }}
       >
-        <div style={{ position: 'relative', width: '320px' }}>
+        <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '200px' }}>
           <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             className="form-input"
-            style={{ paddingLeft: '2.5rem' }}
+            style={{ paddingLeft: '2.5rem', width: '100%' }}
             placeholder="Search Order Number, customer, phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -183,7 +183,7 @@ export default function OrdersPage() {
         </div>
 
         {/* Status Filter Tabs */}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', overflowX: 'auto', maxWidth: '100%' }}>
           {STATUS_FILTERS.map((f) => {
             const count = f.value === 'all'
               ? orders.length
@@ -196,14 +196,15 @@ export default function OrdersPage() {
                 type="button"
                 onClick={() => setStatusFilter(f.value)}
                 style={{
-                  padding: '0.45rem 0.85rem',
+                  padding: '0.45rem 0.75rem',
                   borderRadius: '8px',
                   fontSize: '0.82rem',
                   fontWeight: 700,
                   border: isActive ? '1px solid #059669' : '1px solid #e2e8f0',
                   backgroundColor: isActive ? '#ecfdf5' : '#ffffff',
                   color: isActive ? '#059669' : '#64748b',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {f.label} ({count})
@@ -213,9 +214,10 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders Container (Table on Desktop, Cards on Mobile) */}
       <div className="owner-card">
-        <div className="owner-table-container">
+        {/* Desktop Table View */}
+        <div className="owner-table-container desktop-only-table">
           <table className="owner-table">
             <thead>
               <tr>
@@ -359,167 +361,262 @@ export default function OrdersPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Cards View */}
+        <div className="mobile-only-cards" style={{ padding: '0.75rem' }}>
+          {filteredOrders.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#64748b' }}>
+              <ShoppingCart size={36} color="#94a3b8" style={{ margin: '0 auto 0.75rem' }} />
+              <div style={{ fontWeight: 700, color: '#0f172a' }}>No orders found</div>
+            </div>
+          ) : (
+            filteredOrders.map((ord) => (
+              <div
+                key={ord.id}
+                className="mobile-data-card"
+                onClick={() => setSelectedOrder(ord)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="mobile-data-card-header">
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#059669', fontSize: '0.92rem', fontFamily: 'monospace' }}>
+                      {ord.orderNumber}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem' }}>
+                      <Clock size={12} />
+                      <span>
+                        {ord.createdAt
+                          ? new Date(ord.createdAt).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <Badge variant={getStatusVariant(ord.status)}>
+                    {formatStatusLabel(ord.status)}
+                  </Badge>
+                </div>
+
+                <div className="mobile-data-card-body">
+                  <div className="mobile-data-card-row">
+                    <span className="mobile-data-card-label">Customer</span>
+                    <span className="mobile-data-card-value">{ord.customerName}</span>
+                  </div>
+                  <div className="mobile-data-card-row">
+                    <span className="mobile-data-card-label">Phone</span>
+                    <span className="mobile-data-card-value" style={{ fontWeight: 600, color: '#475569' }}>{ord.customerPhone}</span>
+                  </div>
+                  <div className="mobile-data-card-row">
+                    <span className="mobile-data-card-label">Total Amount</span>
+                    <span className="mobile-data-card-value" style={{ color: '#059669', fontSize: '1rem' }}>
+                      ₹{ord.totalAmount !== undefined ? ord.totalAmount : ord.total}
+                    </span>
+                  </div>
+                  <div className="mobile-data-card-row">
+                    <span className="mobile-data-card-label">Payment</span>
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '4px',
+                        backgroundColor: ord.paymentStatus === 'PAID' ? '#ecfdf5' : '#fffbeb',
+                        color: ord.paymentStatus === 'PAID' ? '#065f46' : '#b45309'
+                      }}
+                    >
+                      {ord.paymentStatus || 'PENDING'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mobile-data-card-actions" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrder(ord)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ flex: 1, minHeight: '38px' }}
+                  >
+                    <Eye size={14} />
+                    <span>View Details</span>
+                  </button>
+
+                  <select
+                    value={ord.status}
+                    disabled={updatingId === ord.id || ord.status === 'CANCELLED' || ord.status === 'DELIVERED'}
+                    onChange={(e) => handleStatusChange(ord.id, e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '0.45rem 0.65rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      backgroundColor: ord.status === 'CANCELLED' || ord.status === 'DELIVERED' ? '#f1f5f9' : '#ffffff',
+                      minHeight: '38px'
+                    }}
+                  >
+                    <option value="PLACED">Placed</option>
+                    <option value="CONFIRMED">Confirmed</option>
+                    <option value="PROCESSING">Processing</option>
+                    <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                    <option value="DELIVERED">Delivered</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
-      {/* Order Details Modal */}
+      {/* Responsive Order Details Modal */}
       {selectedOrder && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.5rem',
-            zIndex: 9999,
-            backdropFilter: 'blur(4px)'
-          }}
+          className="modal-overlay"
           onClick={() => setSelectedOrder(null)}
         >
           <div
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '16px',
-              maxWidth: '680px',
-              width: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
-              padding: '1.75rem'
-            }}
+            className="modal-content"
+            style={{ maxWidth: '680px', width: '100%', padding: '1.25rem' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.85rem', borderBottom: '1px solid #e2e8f0' }}>
               <div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Order Details</div>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Order Details</div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', fontFamily: 'monospace' }}>
                   {selectedOrder.orderNumber}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedOrder(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '0.35rem' }}
+                aria-label="Close modal"
               >
                 <X size={22} />
               </button>
             </div>
 
             {/* Customer & Address Details */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', margin: '1.25rem 0', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '0.85rem', margin: '1rem 0', backgroundColor: '#f8fafc', padding: '0.85rem', borderRadius: '10px' }}>
               <div>
-                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem', marginBottom: '0.35rem' }}>Customer Details</div>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.82rem', marginBottom: '0.3rem' }}>Customer Details</div>
                 <div style={{ fontSize: '0.85rem', color: '#334155', fontWeight: 600 }}>{selectedOrder.customerName}</div>
                 <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{selectedOrder.customerEmail}</div>
                 <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{selectedOrder.customerPhone}</div>
               </div>
 
               <div>
-                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.82rem', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   <MapPin size={13} color="#059669" /> Delivery Address
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#334155', lineHeight: 1.4 }}>
                   {selectedOrder.deliveryAddressText || selectedOrder.deliveryLocation}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.35rem' }}>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.3rem' }}>
                   Slot: <strong>{selectedOrder.deliverySlot || 'Standard'}</strong>
                 </div>
               </div>
             </div>
 
             {/* Ordered Products Table */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem', marginBottom: '0.75rem' }}>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem', marginBottom: '0.65rem' }}>
                 Ordered Products ({selectedOrder.items?.length || 0})
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
-                    <th style={{ padding: '0.6rem 0.75rem', borderRadius: '6px 0 0 6px' }}>Product</th>
-                    <th style={{ padding: '0.6rem 0.5rem' }}>Unit</th>
-                    <th style={{ padding: '0.6rem 0.5rem' }}>Price</th>
-                    <th style={{ padding: '0.6rem 0.5rem' }}>Qty</th>
-                    <th style={{ padding: '0.6rem 0.75rem', textAlign: 'right', borderRadius: '0 6px 6px 0' }}>Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrder.items && selectedOrder.items.length > 0 ? (
-                    selectedOrder.items.map((item, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.65rem 0.75rem', fontWeight: 600, color: '#0f172a' }}>
-                          {item.productName || item.name}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.5rem', color: '#64748b' }}>
-                          {item.unit}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.5rem', color: '#334155' }}>
-                          ₹{item.price}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.5rem', fontWeight: 700 }}>
-                          {item.quantity}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#059669' }}>
-                          ₹{item.subtotal || (item.price * item.quantity)}
+              <div className="owner-table-container">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
+                      <th style={{ padding: '0.5rem 0.65rem', borderRadius: '6px 0 0 6px' }}>Product</th>
+                      <th style={{ padding: '0.5rem 0.45rem' }}>Unit</th>
+                      <th style={{ padding: '0.5rem 0.45rem' }}>Price</th>
+                      <th style={{ padding: '0.5rem 0.45rem' }}>Qty</th>
+                      <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right', borderRadius: '0 6px 6px 0' }}>Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                      selectedOrder.items.map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.55rem 0.65rem', fontWeight: 600, color: '#0f172a' }}>
+                            {item.productName || item.name}
+                          </td>
+                          <td style={{ padding: '0.55rem 0.45rem', color: '#64748b' }}>
+                            {item.unit}
+                          </td>
+                          <td style={{ padding: '0.55rem 0.45rem', color: '#334155' }}>
+                            ₹{item.price}
+                          </td>
+                          <td style={{ padding: '0.55rem 0.45rem', fontWeight: 700 }}>
+                            {item.quantity}
+                          </td>
+                          <td style={{ padding: '0.55rem 0.65rem', textAlign: 'right', fontWeight: 700, color: '#059669' }}>
+                            ₹{item.subtotal || (item.price * item.quantity)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>
+                          No snapshot item details available
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>
-                        No snapshot item details available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Financial Summary */}
-            <div style={{ backgroundColor: '#f8fafc', padding: '1rem 1.25rem', borderRadius: '10px', marginBottom: '1.5rem', fontSize: '0.88rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.4rem' }}>
+            <div style={{ backgroundColor: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '10px', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.35rem' }}>
                 <span style={{ color: '#64748b' }}>Subtotal</span>
                 <span style={{ fontWeight: 600, color: '#0f172a' }}>₹{selectedOrder.subtotal}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.4rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.35rem' }}>
                 <span style={{ color: '#64748b' }}>Delivery Charge</span>
                 <span style={{ fontWeight: 600, color: selectedOrder.deliveryCharge > 0 ? '#0f172a' : '#059669' }}>
                   {selectedOrder.deliveryCharge > 0 ? `₹${selectedOrder.deliveryCharge}` : 'FREE (Order >= ₹500)'}
                 </span>
               </div>
               {selectedOrder.discount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.4rem', color: '#059669' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.35rem', color: '#059669' }}>
                   <span>Discount</span>
                   <span>-₹{selectedOrder.discount}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.6rem', borderTop: '1px solid #e2e8f0', fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #e2e8f0', fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>
                 <span>Final Total</span>
                 <span style={{ color: '#059669' }}>₹{selectedOrder.totalAmount !== undefined ? selectedOrder.totalAmount : selectedOrder.total}</span>
               </div>
             </div>
 
             {/* Status & Update in Modal */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.85rem', borderTop: '1px solid #e2e8f0' }}>
               <div>
-                <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.2rem' }}>Current Order Status</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.15rem' }}>Status</div>
                 <Badge variant={getStatusVariant(selectedOrder.status)}>
                   {formatStatusLabel(selectedOrder.status)}
                 </Badge>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>Update Status:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>Change:</span>
                 <select
                   value={selectedOrder.status}
                   disabled={updatingId === selectedOrder.id || selectedOrder.status === 'CANCELLED' || selectedOrder.status === 'DELIVERED'}
                   onChange={(e) => handleStatusChange(selectedOrder.id, e.target.value)}
                   style={{
-                    padding: '0.45rem 0.75rem',
+                    padding: '0.4rem 0.65rem',
                     borderRadius: '8px',
                     border: '1px solid #059669',
-                    fontSize: '0.85rem',
+                    fontSize: '0.82rem',
                     fontWeight: 700,
                     backgroundColor: '#ffffff',
                     cursor: 'pointer'

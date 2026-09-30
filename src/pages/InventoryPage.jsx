@@ -62,21 +62,21 @@ export default function InventoryPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>
             Inventory &amp; Stock Levels
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.88rem' }}>
-            Monitor real-time warehouse stock counts and replenish low inventory items via Spring Boot PATCH API.
+            Monitor real-time warehouse stock counts and replenish low inventory items.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={loadInitialData}
-            className="btn btn-outline"
+            className="btn btn-outline btn-sm"
             title="Refresh from MySQL"
           >
             <RefreshCw size={15} />
@@ -88,18 +88,18 @@ export default function InventoryPage() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.5rem',
+                gap: '0.45rem',
                 backgroundColor: '#fffbeb',
                 border: '1px solid #fde68a',
                 color: '#92400e',
-                padding: '0.5rem 0.85rem',
+                padding: '0.45rem 0.8rem',
                 borderRadius: '8px',
-                fontSize: '0.85rem',
+                fontSize: '0.82rem',
                 fontWeight: 700
               }}
             >
-              <AlertTriangle size={16} color="#d97706" />
-              <span>{lowStockProducts.length} items require replenishment</span>
+              <AlertTriangle size={15} color="#d97706" />
+              <span>{lowStockProducts.length} items need restock</span>
             </div>
           )}
         </div>
@@ -141,7 +141,8 @@ export default function InventoryPage() {
             padding: '1rem 1.25rem',
             borderRadius: '10px',
             marginBottom: '1.5rem',
-            gap: '1rem'
+            gap: '1rem',
+            flexWrap: 'wrap'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -174,19 +175,19 @@ export default function InventoryPage() {
           justifyContent: 'space-between'
         }}
       >
-        <div style={{ position: 'relative', width: '300px' }}>
+        <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '200px' }}>
           <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             className="form-input"
-            style={{ paddingLeft: '2.5rem' }}
+            style={{ paddingLeft: '2.5rem', width: '100%' }}
             placeholder="Search inventory by title or SKU..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', overflowX: 'auto', maxWidth: '100%' }}>
           {[
             { id: 'all', label: `All (${products.length})` },
             { id: 'low_stock', label: `Low Stock (1-10)` },
@@ -198,14 +199,15 @@ export default function InventoryPage() {
               type="button"
               onClick={() => setFilter(tab.id)}
               style={{
-                padding: '0.45rem 0.85rem',
+                padding: '0.45rem 0.75rem',
                 borderRadius: '8px',
                 fontSize: '0.82rem',
                 fontWeight: 700,
                 border: filter === tab.id ? '1px solid #059669' : '1px solid #e2e8f0',
                 backgroundColor: filter === tab.id ? '#ecfdf5' : '#ffffff',
                 color: filter === tab.id ? '#059669' : '#64748b',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}
             >
               {tab.label}
@@ -222,10 +224,11 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Inventory Table */}
+      {/* Inventory Container (Table on Desktop, Cards on Mobile) */}
       {!loading && (
         <div className="owner-card">
-          <div className="owner-table-container">
+          {/* Desktop Table View */}
+          <div className="owner-table-container desktop-only-table">
             <table className="owner-table">
               <thead>
                 <tr>
@@ -369,6 +372,135 @@ export default function InventoryPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards View */}
+          <div className="mobile-only-cards" style={{ padding: '0.75rem' }}>
+            {filtered.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#64748b' }}>
+                <Boxes size={36} color="#94a3b8" style={{ margin: '0 auto 0.75rem' }} />
+                <div style={{ fontWeight: 700, color: '#0f172a' }}>No matching inventory records found</div>
+              </div>
+            ) : (
+              filtered.map((prod) => (
+                <div key={prod.id} className="mobile-data-card">
+                  <div className="mobile-data-card-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                      <img
+                        src={prod.imageUrl || prod.image}
+                        alt={prod.name}
+                        style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200';
+                        }}
+                      />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {prod.name}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem' }}>
+                          SKU: {prod.sku || 'N/A'} &bull; {prod.categoryName}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Badge
+                      variant={
+                        prod.stockQuantity === 0
+                          ? 'danger'
+                          : prod.stockQuantity <= 10
+                          ? 'warning'
+                          : 'success'
+                      }
+                    >
+                      {prod.stockQuantity === 0
+                        ? 'Out of Stock'
+                        : prod.stockQuantity <= 10
+                        ? 'Low Stock'
+                        : 'In Stock'}
+                    </Badge>
+                  </div>
+
+                  <div className="mobile-data-card-body">
+                    <div className="mobile-data-card-row">
+                      <span className="mobile-data-card-label">Current Stock</span>
+                      <span
+                        style={{
+                          fontSize: '1.1rem',
+                          fontWeight: 800,
+                          color: prod.stockQuantity === 0 ? '#ef4444' : prod.stockQuantity <= 10 ? '#d97706' : '#059669'
+                        }}
+                      >
+                        {prod.stockQuantity} {prod.unit || 'units'}
+                      </span>
+                    </div>
+
+                    <div className="mobile-data-card-row" style={{ alignItems: 'center' }}>
+                      <span className="mobile-data-card-label">Quick Restock</span>
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleStockUpdate(prod.id, prod.name, prod.stockQuantity + 10)}
+                          className="btn btn-outline btn-sm"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: '34px' }}
+                        >
+                          +10
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStockUpdate(prod.id, prod.name, prod.stockQuantity + 25)}
+                          className="btn btn-outline btn-sm"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: '34px' }}
+                        >
+                          +25
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStockUpdate(prod.id, prod.name, prod.stockQuantity + 50)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: '34px' }}
+                        >
+                          +50
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mobile-data-card-actions" style={{ justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Set Exact Units:</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        defaultValue={prod.stockQuantity}
+                        id={`exact-stock-${prod.id}`}
+                        style={{
+                          width: '70px',
+                          textAlign: 'center',
+                          padding: '0.35rem 0.45rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontWeight: 700,
+                          fontSize: '0.85rem',
+                          height: '36px'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById(`exact-stock-${prod.id}`);
+                          if (input) handleStockUpdate(prod.id, prod.name, input.value);
+                        }}
+                        className="btn btn-primary btn-sm"
+                        style={{ minHeight: '36px', padding: '0.35rem 0.75rem' }}
+                      >
+                        Set
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

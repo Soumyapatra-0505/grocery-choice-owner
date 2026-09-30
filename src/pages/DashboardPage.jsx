@@ -23,7 +23,6 @@ export default function DashboardPage() {
     lowStockProducts,
     outOfStockProducts,
     totalCategories,
-    totalOrders,
     orders,
     loading,
     error,
@@ -47,33 +46,33 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Page Title & Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>
             Store Overview &amp; Live Metrics
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.2rem' }}>
-            Real-time MySQL catalog data, inventory health alerts, and fulfillment tracking.
+            Real-time catalog data, inventory health alerts, and fulfillment tracking.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', width: 'auto' }}>
           <button
             type="button"
             onClick={loadInitialData}
-            className="btn btn-outline"
+            className="btn btn-outline btn-sm"
             title="Refresh from MySQL"
           >
             <RefreshCw size={15} />
             <span>Refresh</span>
           </button>
-          <Link to="/inventory" className="btn btn-outline">
+          <Link to="/inventory" className="btn btn-outline btn-sm">
             <RefreshCw size={15} />
             <span>Update Stock</span>
           </Link>
-          <Link to="/products/add" className="btn btn-primary">
+          <Link to="/products/add" className="btn btn-primary btn-sm">
             <Plus size={16} />
-            <span>Add New Product</span>
+            <span>Add Product</span>
           </Link>
         </div>
       </div>
@@ -91,11 +90,12 @@ export default function DashboardPage() {
             padding: '1rem 1.25rem',
             borderRadius: '10px',
             marginBottom: '1.5rem',
-            gap: '1rem'
+            gap: '1rem',
+            flexWrap: 'wrap'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <AlertCircle size={20} color="#ef4444" />
+            <AlertCircle size={20} color="#ef4444" style={{ flexShrink: 0 }} />
             <div>
               <div style={{ fontWeight: 800 }}>Backend Connection Error</div>
               <div style={{ fontSize: '0.85rem' }}>{error}</div>
@@ -123,7 +123,7 @@ export default function DashboardPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
           gap: '1.25rem',
           marginBottom: '2rem'
         }}
@@ -186,7 +186,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 2 Column Section: Recent Orders & Urgent Restock List */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         {/* Urgent Restock List Card (Real Backend Data) */}
         <div className="owner-card">
           <div className="owner-card-header">
@@ -195,7 +195,7 @@ export default function DashboardPage() {
               <span>Low / Out of Stock Replenishment ({urgentRestockItems.length})</span>
             </div>
             <Link to="/inventory" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <span>Inventory Control</span>
+              <span>Inventory</span>
               <ArrowRight size={14} />
             </Link>
           </div>
@@ -222,10 +222,11 @@ export default function DashboardPage() {
                       borderRadius: '10px',
                       backgroundColor: prod.stockQuantity === 0 ? '#fff1f2' : '#f8fafc',
                       border: prod.stockQuantity === 0 ? '1px solid #fecaca' : '1px solid #e2e8f0',
-                      gap: '0.75rem'
+                      gap: '0.75rem',
+                      flexWrap: 'wrap'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: '1 1 180px' }}>
                       <img
                         src={prod.imageUrl || prod.image}
                         alt={prod.name}
@@ -269,7 +270,7 @@ export default function DashboardPage() {
           <div className="owner-card-header">
             <div className="owner-card-title">
               <ShoppingCart size={18} color="#059669" />
-              <span>Incoming Customer Orders ({orders.length} active / {totalOrders} total)</span>
+              <span>Recent Orders ({orders.length} active)</span>
             </div>
             <Link to="/orders" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               <span>View All</span>
@@ -277,7 +278,8 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="owner-table-container">
+          {/* Desktop Table View */}
+          <div className="owner-table-container desktop-only-table">
             <table className="owner-table">
               <thead>
                 <tr>
@@ -333,6 +335,56 @@ export default function DashboardPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards View */}
+          <div className="mobile-only-cards" style={{ padding: '0.75rem' }}>
+            {orders.slice(0, 4).map((order) => (
+              <div key={order.id} className="mobile-data-card">
+                <div className="mobile-data-card-header">
+                  <div>
+                    <span style={{ fontWeight: 800, color: '#059669', fontSize: '0.9rem' }}>#{order.id}</span>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.4rem' }}>({order.itemsCount} items)</span>
+                  </div>
+                  <Badge variant={getOrderStatusVariant(order.status)}>
+                    {order.status}
+                  </Badge>
+                </div>
+
+                <div className="mobile-data-card-body">
+                  <div className="mobile-data-card-row">
+                    <span className="mobile-data-card-label">Customer</span>
+                    <span className="mobile-data-card-value">{order.customerName}</span>
+                  </div>
+                  <div className="mobile-data-card-row">
+                    <span className="mobile-data-card-label">Amount</span>
+                    <span className="mobile-data-card-value" style={{ color: '#059669' }}>₹{order.total}</span>
+                  </div>
+                </div>
+
+                <div className="mobile-data-card-actions" style={{ justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Change status:</span>
+                  <select
+                    value={order.status}
+                    onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                    style={{
+                      padding: '0.3rem 0.6rem',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      backgroundColor: '#ffffff'
+                    }}
+                  >
+                    <option value="Placed">Placed</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Out for Delivery">Out for Delivery</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useOwnerData } from '../../context/OwnerDataContext';
 import { useOwnerAuth } from '../../context/OwnerAuthContext';
+import Logo from '../../assets/Logo';
 import {
   Bell,
   Search,
@@ -9,10 +10,11 @@ import {
   ExternalLink,
   Store,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Menu
 } from 'lucide-react';
 
-export default function OwnerHeader() {
+export default function OwnerHeader({ onOpenMobileDrawer }) {
   const { lowStockProducts } = useOwnerData();
   const { owner } = useOwnerAuth();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -23,95 +25,76 @@ export default function OwnerHeader() {
 
   return (
     <header className="owner-header">
-      {/* Search Input */}
-      <div className="owner-header-search" style={{ position: 'relative' }}>
-        <Search
-          size={16}
-          color="#94a3b8"
-          style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
-        />
-        <input
-          type="text"
-          placeholder="Search products, orders, customers..."
-          className="form-input"
-          style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.85rem', width: '100%' }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && e.target.value.trim()) {
-              navigate(`/products?search=${encodeURIComponent(e.target.value.trim())}`);
-            }
-          }}
-        />
+      {/* Left side: Mobile Hamburger + Brand Logo (Mobile only) + Desktop Search */}
+      <div className="owner-header-left">
+        {/* Mobile Hamburger Toggle Button */}
+        <button
+          type="button"
+          onClick={onOpenMobileDrawer}
+          className="mobile-hamburger-btn"
+          aria-label="Open navigation menu"
+          title="Open Menu"
+        >
+          <Menu size={22} />
+        </button>
+
+        {/* Mobile Branding (visible only on mobile/tablet when sidebar is hidden) */}
+        <div className="mobile-header-brand">
+          <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+            <Logo size="sm" />
+          </Link>
+        </div>
+
+        {/* Desktop Search Input (hidden on mobile) */}
+        <div className="owner-header-search">
+          <Search
+            size={16}
+            color="#94a3b8"
+            style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+          />
+          <input
+            type="text"
+            placeholder="Search products, orders, customers..."
+            className="form-input"
+            style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.85rem', width: '100%' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.value.trim()) {
+                navigate(`/products?search=${encodeURIComponent(e.target.value.trim())}`);
+              }
+            }}
+          />
+        </div>
       </div>
 
-      {/* Right Actions */}
-      <div className="owner-header-actions" style={{ display: 'flex', alignItems: 'center' }}>
-        {/* Quick Add Product Button */}
-        <Link to="/products/add" className="btn btn-primary btn-sm">
+      {/* Right side Actions */}
+      <div className="owner-header-actions">
+        {/* Quick Add Product Button (Desktop/Tablet) */}
+        <Link to="/products/add" className="btn btn-primary btn-sm header-add-product-btn">
           <Plus size={16} />
           <span>Add Product</span>
         </Link>
 
-        {/* Notifications Dropdown */}
+        {/* Notifications Dropdown (Mobile + Desktop) */}
         <div style={{ position: 'relative' }}>
           <button
             type="button"
             onClick={() => setShowNotifications((p) => !p)}
             aria-label="Notifications"
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#475569',
-              position: 'relative'
-            }}
+            className="owner-header-icon-btn"
+            title="Notifications"
           >
             <Bell size={18} />
             {lowStockProducts.length > 0 && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  backgroundColor: '#ef4444',
-                  color: '#ffffff',
-                  fontSize: '0.65rem',
-                  fontWeight: 800,
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid #ffffff'
-                }}
-              >
-                {lowStockProducts.length}
+              <span className="owner-header-bell-badge">
+                {lowStockProducts.length > 99 ? '99+' : lowStockProducts.length}
               </span>
             )}
           </button>
 
           {showNotifications && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '48px',
-                right: 0,
-                width: '320px',
-                backgroundColor: '#ffffff',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                zIndex: 50,
-                padding: '1rem'
-              }}
-            >
+            <div className="owner-header-notification-popover">
               <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.75rem', color: '#0f172a' }}>
-                Stock & System Alerts
+                Stock &amp; System Alerts
               </div>
 
               {lowStockProducts.length > 0 ? (
@@ -155,31 +138,20 @@ export default function OwnerHeader() {
           )}
         </div>
 
-        {/* View Customer App Link */}
+        {/* View Customer App Link (Desktop only) */}
         <a
           href={import.meta.env.VITE_CUSTOMER_STORE_URL || import.meta.env.VITE_CUSTOMER_URL || 'http://localhost:5173'}
           target="_blank"
           rel="noopener noreferrer"
           title="Open Customer Storefront"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            fontSize: '0.82rem',
-            fontWeight: 700,
-            color: '#059669',
-            backgroundColor: '#ecfdf5',
-            padding: '0.45rem 0.75rem',
-            borderRadius: '8px',
-            border: '1px solid #a7f3d0'
-          }}
+          className="header-customer-store-btn"
         >
           <Store size={15} />
           <span>Customer Store</span>
           <ExternalLink size={13} />
         </a>
 
-        {/* Owner Profile Account Button */}
+        {/* Owner Profile Account Button (Mobile + Desktop) */}
         <Link
           to="/profile"
           className="owner-header-user-btn"

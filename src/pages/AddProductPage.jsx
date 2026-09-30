@@ -159,7 +159,7 @@ export default function AddProductPage() {
       )}
 
       <div className="owner-card">
-        <form onSubmit={handleSubmit} style={{ padding: '2rem' }}>
+        <form onSubmit={handleSubmit} className="owner-form-body">
           {/* Product Name & SKU */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
             <div className="form-group">
@@ -327,7 +327,7 @@ export default function AddProductPage() {
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
             <Link to="/products" className="btn btn-outline" disabled={submitting}>
               Cancel
             </Link>
