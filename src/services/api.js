@@ -2,8 +2,7 @@
  * Grocery Choice - Owner Portal API Service Layer
  * Centralized API client for communicating with the Spring Boot backend.
  */
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE_URL) || 'http://localhost:8080';
 
 /**
  * Standardized HTTP request wrapper with uniform error handling.
@@ -144,6 +143,8 @@ export const productApi = {
  * GET    /api/orders/number/{orderNumber}
  * PATCH  /api/orders/{id}/status
  * POST   /api/orders/{id}/cancel
+ * GET    /api/orders/eligible-delivery-partners
+ * POST   /api/orders/{id}/delivery-assignment
  */
 export const orderApi = {
   getAll: () => request('/api/orders'),
@@ -158,6 +159,12 @@ export const orderApi = {
   cancel: (id) =>
     request(`/api/orders/${id}/cancel`, {
       method: 'POST'
+    }),
+  getEligibleDeliveryPartners: () => request('/api/orders/eligible-delivery-partners'),
+  assignDeliveryPartner: (id, deliveryUserId) =>
+    request(`/api/orders/${id}/delivery-assignment`, {
+      method: 'POST',
+      body: { deliveryUserId }
     })
 };
 

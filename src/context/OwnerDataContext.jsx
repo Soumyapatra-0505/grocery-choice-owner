@@ -116,6 +116,17 @@ function normalizeOrder(o) {
     customerPhone: o.customerPhone || (o.user?.phone) || '+91 98765 43210',
     deliveryLocation: o.deliveryAddressText || 'Standard Delivery Address',
     deliveryAddressText: o.deliveryAddressText || 'Standard Delivery Address',
+    assignedDeliveryPartnerId: o.assignedDeliveryPartnerId || null,
+    assignedDeliveryPartnerName: o.assignedDeliveryPartnerName || null,
+    assignedDeliveryPartnerPhone: o.assignedDeliveryPartnerPhone || null,
+    assignedAt: o.assignedAt || null,
+    acceptedAt: o.acceptedAt || null,
+    pickedUpAt: o.pickedUpAt || null,
+    deliveredAt: o.deliveredAt || null,
+    deliveryNotes: o.deliveryNotes || null,
+    deliveryOtpVerified: !!o.deliveryOtpVerified,
+    codCollected: !!o.codCollected,
+    codCollectedAt: o.codCollectedAt || null,
     items,
     itemsCount,
     subtotal: Number(o.subtotal || 0),
@@ -414,6 +425,20 @@ export function OwnerDataProvider({ children }) {
     }
   };
 
+  const assignDeliveryPartner = async (orderId, deliveryUserId) => {
+    try {
+      const updated = await orderApi.assignDeliveryPartner(orderId, deliveryUserId);
+      const normalized = normalizeOrder(updated);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? normalized : o))
+      );
+      return normalized;
+    } catch (err) {
+      console.error('Failed to assign delivery partner on server:', err);
+      throw err;
+    }
+  };
+
   // Real backend metrics calculations
   const totalProducts = products.length;
   const activeProducts = products.filter((p) => p.active !== false).length;
@@ -457,7 +482,8 @@ export function OwnerDataProvider({ children }) {
         addCategory,
         updateCategory,
         deleteCategory,
-        updateOrderStatus
+        updateOrderStatus,
+        assignDeliveryPartner
       }}
     >
       {children}

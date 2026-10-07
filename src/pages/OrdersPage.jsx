@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useOwnerData } from '../context/OwnerDataContext';
+import { orderApi } from '../services/api';
 import Badge from '../components/common/Badge';
 import {
   ShoppingCart,
@@ -11,7 +12,9 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Truck,
+  UserPlus
 } from 'lucide-react';
 
 const STATUS_FILTERS = [
@@ -25,12 +28,20 @@ const STATUS_FILTERS = [
 ];
 
 export default function OrdersPage() {
-  const { orders, updateOrderStatus, fetchOrders, loading } = useOwnerData();
+  const { orders, updateOrderStatus, assignDeliveryPartner, fetchOrders, loading } = useOwnerData();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', message: '' }
   const [updatingId, setUpdatingId] = useState(null);
+
+  // Delivery partner assignment state
+  const [assignModalOrder, setAssignModalOrder] = useState(null);
+  const [deliveryPartners, setDeliveryPartners] = useState([]);
+  const [loadingPartners, setLoadingPartners] = useState(false);
+  const [selectedPartnerId, setSelectedPartnerId] = useState('');
+  const [submittingAssign, setSubmittingAssign] = useState(false);
+  const [assignError, setAssignError] = useState(null);
 
   const filteredOrders = orders.filter((ord) => {
     const s = search.toLowerCase();
@@ -98,6 +109,73 @@ export default function OrdersPage() {
       });
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return '—';
+    try {
+      return new Date(dateStr).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return String(dateStr);
+    }
+  };
+
+  const openAssignModal = async (order, e) => {
+    if (e) e.stopPropagation();
+    if (order.status !== 'PROCESSING') return;
+    setAssignModalOrder(order);
+    setSelectedPartnerId(order.assignedDeliveryPartnerId ? String(order.assignedDeliveryPartnerId) : '');
+    setAssignError(null);
+    setLoadingPartners(true);
+    try {
+      const partners = await orderApi.getEligibleDeliveryPartners();
+      // Display active DELIVERY users
+      const activeRiders = (Array.isArray(partners) ? partners : []).filter(
+        (p) => (p.role === 'DELIVERY' || !p.role) && (p.status === 'ACTIVE' || !p.status)
+      );
+      setDeliveryPartners(activeRiders);
+    } catch (err) {
+      console.error('Failed to load eligible delivery partners:', err);
+      setAssignError(err.message || 'Failed to load delivery partners');
+    } finally {
+      setLoadingPartners(false);
+    }
+  };
+
+  const handleConfirmAssignment = async () => {
+    if (!assignModalOrder || !selectedPartnerId) return;
+    if (String(selectedPartnerId) === String(assignModalOrder.assignedDeliveryPartnerId)) {
+      setAssignError('This delivery partner is already assigned to this order.');
+      return;
+    }
+    try {
+      setSubmittingAssign(true);
+      setAssignError(null);
+      const updated = await assignDeliveryPartner(assignModalOrder.id, Number(selectedPartnerId));
+      setFeedback({
+        type: 'success',
+        message: `Delivery partner assigned to Order #${updated.orderNumber || assignModalOrder.orderNumber}!`
+      });
+      // If modal is open for this order, update selectedOrder
+      if (selectedOrder && selectedOrder.id === assignModalOrder.id) {
+        setSelectedOrder(updated);
+      }
+      setAssignModalOrder(null);
+      setTimeout(() => {
+        setFeedback((prev) => (prev?.type === 'success' ? null : prev));
+      }, 3500);
+    } catch (err) {
+      console.error('Delivery assignment failed:', err);
+      setAssignError(err.message || 'Failed to assign delivery partner.');
+    } finally {
+      setSubmittingAssign(false);
     }
   };
 
@@ -311,16 +389,56 @@ export default function OrdersPage() {
                       </span>
                     </td>
 
-                    {/* Order Status Badge */}
+                    {/* Order Status Badge & Assigned Partner */}
                     <td>
                       <Badge variant={getStatusVariant(ord.status)}>
                         {formatStatusLabel(ord.status)}
                       </Badge>
+                      {ord.assignedDeliveryPartnerName && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            fontSize: '0.75rem',
+                            color: '#059669',
+                            fontWeight: 600,
+                            marginTop: '0.25rem'
+                          }}
+                          title={`Assigned Partner: ${ord.assignedDeliveryPartnerName}${ord.assignedDeliveryPartnerPhone ? ' (' + ord.assignedDeliveryPartnerPhone + ')' : ''}`}
+                        >
+                          <Truck size={12} />
+                          <span>{ord.assignedDeliveryPartnerName}</span>
+                        </div>
+                      )}
                     </td>
 
-                    {/* Actions: View Details & Status Update Select */}
+                    {/* Actions: Assign Partner (PROCESSING only), View Details & Status Update Select */}
                     <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        {ord.status === 'PROCESSING' && (
+                          <button
+                            type="button"
+                            onClick={(e) => openAssignModal(ord, e)}
+                            className="btn btn-secondary"
+                            style={{
+                              padding: '0.3rem 0.55rem',
+                              fontSize: '0.75rem',
+                              borderColor: '#a7f3d0',
+                              backgroundColor: '#ecfdf5',
+                              color: '#059669',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem'
+                            }}
+                            title={ord.assignedDeliveryPartnerName ? 'Reassign Delivery Partner' : 'Assign Delivery Partner'}
+                          >
+                            <Truck size={13} />
+                            <span>{ord.assignedDeliveryPartnerName ? 'Reassign' : 'Assign Partner'}</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => setSelectedOrder(ord)}
@@ -431,9 +549,46 @@ export default function OrdersPage() {
                       {ord.paymentStatus || 'PENDING'}
                     </span>
                   </div>
+                  {ord.assignedDeliveryPartnerName && (
+                    <div className="mobile-data-card-row">
+                      <span className="mobile-data-card-label">Rider</span>
+                      <span className="mobile-data-card-value" style={{ color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <Truck size={13} />
+                        <span>{ord.assignedDeliveryPartnerName}</span>
+                        {ord.assignedDeliveryPartnerPhone && (
+                          <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500 }}>
+                            ({ord.assignedDeliveryPartnerPhone})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mobile-data-card-actions" onClick={(e) => e.stopPropagation()}>
+                  {ord.status === 'PROCESSING' && (
+                    <button
+                      type="button"
+                      onClick={(e) => openAssignModal(ord, e)}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        flex: 1,
+                        minHeight: '38px',
+                        color: '#059669',
+                        borderColor: '#a7f3d0',
+                        backgroundColor: '#ecfdf5',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <Truck size={14} />
+                      <span>{ord.assignedDeliveryPartnerName ? 'Reassign Rider' : 'Assign Rider'}</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setSelectedOrder(ord)}
@@ -522,6 +677,95 @@ export default function OrdersPage() {
                   Slot: <strong>{selectedOrder.deliverySlot || 'Standard'}</strong>
                 </div>
               </div>
+            </div>
+
+            {/* Delivery Fulfillment & Tracking */}
+            <div
+              style={{
+                backgroundColor: '#f8fafc',
+                padding: '0.9rem 1rem',
+                borderRadius: '10px',
+                marginBottom: '1.25rem',
+                border: '1px solid #e2e8f0'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Truck size={15} color="#059669" />
+                  <span>Delivery Fulfillment</span>
+                </div>
+                {selectedOrder.status === 'PROCESSING' && (
+                  <button
+                    type="button"
+                    onClick={(e) => openAssignModal(selectedOrder, e)}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      padding: '0.25rem 0.55rem',
+                      fontSize: '0.75rem',
+                      color: '#059669',
+                      borderColor: '#a7f3d0',
+                      backgroundColor: '#ecfdf5',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem'
+                    }}
+                  >
+                    <UserPlus size={13} />
+                    <span>{selectedOrder.assignedDeliveryPartnerName ? 'Change Partner' : 'Assign Partner'}</span>
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 190px), 1fr))', gap: '0.65rem', fontSize: '0.82rem' }}>
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', display: 'block' }}>Delivery Partner</span>
+                  <span style={{ fontWeight: 700, color: selectedOrder.assignedDeliveryPartnerName ? '#0f172a' : '#94a3b8' }}>
+                    {selectedOrder.assignedDeliveryPartnerName || 'Not Assigned'}
+                  </span>
+                </div>
+
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', display: 'block' }}>Delivery Partner Phone</span>
+                  <span style={{ fontWeight: 600, color: selectedOrder.assignedDeliveryPartnerPhone ? '#334155' : '#94a3b8' }}>
+                    {selectedOrder.assignedDeliveryPartnerPhone || '—'}
+                  </span>
+                </div>
+
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', display: 'block' }}>Assigned At</span>
+                  <span style={{ color: '#334155' }}>
+                    {formatDateTime(selectedOrder.assignedAt)}
+                  </span>
+                </div>
+
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', display: 'block' }}>Accepted At</span>
+                  <span style={{ color: '#334155' }}>
+                    {formatDateTime(selectedOrder.acceptedAt)}
+                  </span>
+                </div>
+
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', display: 'block' }}>Picked Up At</span>
+                  <span style={{ color: '#334155' }}>
+                    {formatDateTime(selectedOrder.pickedUpAt)}
+                  </span>
+                </div>
+
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', display: 'block' }}>Delivered At</span>
+                  <span style={{ color: '#334155' }}>
+                    {formatDateTime(selectedOrder.deliveredAt)}
+                  </span>
+                </div>
+              </div>
+
+              {selectedOrder.deliveryNotes && (
+                <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #e2e8f0', fontSize: '0.8rem', color: '#475569' }}>
+                  <span style={{ fontWeight: 600 }}>Delivery Notes: </span>{selectedOrder.deliveryNotes}
+                </div>
+              )}
             </div>
 
             {/* Ordered Products Table */}
@@ -630,6 +874,184 @@ export default function OrdersPage() {
                   <option value="CANCELLED">Cancelled</option>
                 </select>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Delivery Partner Modal */}
+      {assignModalOrder && (
+        <div
+          className="modal-overlay"
+          onClick={() => !submittingAssign && setAssignModalOrder(null)}
+        >
+          <div
+            className="modal-content"
+            style={{ maxWidth: '520px', width: '100%', padding: '1.25rem' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.85rem', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Truck size={18} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    Assign Delivery Partner
+                  </h2>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    Order #{assignModalOrder.orderNumber} ({formatStatusLabel(assignModalOrder.status)})
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={submittingAssign}
+                onClick={() => setAssignModalOrder(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '0.35rem' }}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Error Banner */}
+            {assignError && (
+              <div
+                style={{
+                  marginTop: '0.85rem',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#b91c1c',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                <AlertCircle size={15} />
+                <span>{assignError}</span>
+              </div>
+            )}
+
+            {/* Content: Partners List */}
+            <div style={{ margin: '1rem 0' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.5rem' }}>
+                Select Active Delivery Partner:
+              </div>
+
+              {loadingPartners ? (
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b' }}>
+                  <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.5rem', color: '#059669' }} />
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Loading active delivery partners...</div>
+                </div>
+              ) : deliveryPartners.length === 0 ? (
+                <div style={{ padding: '1.25rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '0.85rem', textAlign: 'center' }}>
+                  <AlertCircle size={24} color="#d97706" style={{ margin: '0 auto 0.5rem' }} />
+                  <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>No Active Delivery Partners Found</div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#b45309' }}>
+                    Please add or activate delivery accounts with role <strong>DELIVERY</strong> in Staff Management.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '0.2rem' }}>
+                  {deliveryPartners.map((partner) => {
+                    const isSelected = String(selectedPartnerId) === String(partner.id);
+                    const isCurrentlyAssigned = String(assignModalOrder.assignedDeliveryPartnerId) === String(partner.id);
+
+                    return (
+                      <label
+                        key={partner.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.75rem 0.9rem',
+                          borderRadius: '8px',
+                          border: isSelected ? '2px solid #059669' : '1px solid #e2e8f0',
+                          backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <input
+                            type="radio"
+                            name="deliveryPartner"
+                            value={partner.id}
+                            checked={isSelected}
+                            onChange={() => {
+                              setSelectedPartnerId(partner.id);
+                              setAssignError(null);
+                            }}
+                            style={{ accentColor: '#059669', width: 16, height: 16, cursor: 'pointer' }}
+                          />
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <span>{partner.fullName}</span>
+                              {isCurrentlyAssigned && (
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.1rem 0.4rem', borderRadius: 4, backgroundColor: '#dcfce7', color: '#166534' }}>
+                                  Current
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.15rem' }}>
+                              {partner.phone && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                  <Phone size={11} /> {partner.phone}
+                                </span>
+                              )}
+                              <span>• {partner.designation || 'Delivery Partner'}</span>
+                              {partner.storeHub && <span>• {partner.storeHub}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', paddingTop: '0.85rem', borderTop: '1px solid #e2e8f0' }}>
+              <button
+                type="button"
+                disabled={submittingAssign}
+                onClick={() => setAssignModalOrder(null)}
+                className="btn btn-secondary btn-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  !selectedPartnerId ||
+                  String(selectedPartnerId) === String(assignModalOrder.assignedDeliveryPartnerId) ||
+                  submittingAssign ||
+                  loadingPartners
+                }
+                onClick={handleConfirmAssignment}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                {submittingAssign ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Assigning...</span>
+                  </>
+                ) : String(selectedPartnerId) === String(assignModalOrder.assignedDeliveryPartnerId) ? (
+                  <span>Already Assigned</span>
+                ) : (
+                  <>
+                    <Truck size={14} />
+                    <span>Confirm Assignment</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
