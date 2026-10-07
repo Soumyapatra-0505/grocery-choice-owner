@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useOwnerData } from '../../context/OwnerDataContext';
 import { useOwnerAuth } from '../../context/OwnerAuthContext';
@@ -19,6 +19,41 @@ export default function OwnerHeader({ onOpenMobileDrawer }) {
   const { owner } = useOwnerAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
+
+  const notificationRef = useRef(null);
+  const bellButtonRef = useRef(null);
+  const notificationPanelRef = useRef(null);
+
+  // Close notifications panel on outside click or Escape key press
+  useEffect(() => {
+    if (!showNotifications) return;
+
+    const handleClickOutside = (event) => {
+      const isInsideContainer = notificationRef.current && notificationRef.current.contains(event.target);
+      const isInsideButton = bellButtonRef.current && bellButtonRef.current.contains(event.target);
+      const isInsidePanel = notificationPanelRef.current && notificationPanelRef.current.contains(event.target);
+
+      if (!isInsideContainer && !isInsideButton && !isInsidePanel) {
+        setShowNotifications(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showNotifications]);
 
   const ownerFirstName = owner?.fullName ? owner.fullName.split(' ')[0] : (owner?.name ? owner.name.split(' ')[0] : 'Owner');
   const ownerInitial = (owner?.fullName || owner?.name || 'O').charAt(0).toUpperCase();
@@ -75,13 +110,15 @@ export default function OwnerHeader({ onOpenMobileDrawer }) {
         </Link>
 
         {/* Notifications Dropdown (Mobile + Desktop) */}
-        <div style={{ position: 'relative' }}>
+        <div ref={notificationRef} style={{ position: 'relative' }}>
           <button
+            ref={bellButtonRef}
             type="button"
             onClick={() => setShowNotifications((p) => !p)}
             aria-label="Notifications"
             className="owner-header-icon-btn"
             title="Notifications"
+            aria-expanded={showNotifications}
           >
             <Bell size={18} />
             {lowStockProducts.length > 0 && (
@@ -92,10 +129,11 @@ export default function OwnerHeader({ onOpenMobileDrawer }) {
           </button>
 
           {showNotifications && (
-            <div className="owner-header-notification-popover">
+            <div ref={notificationPanelRef} className="owner-header-notification-popover">
               <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.75rem', color: '#0f172a' }}>
                 Stock &amp; System Alerts
               </div>
+
 
               {lowStockProducts.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
