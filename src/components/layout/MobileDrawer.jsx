@@ -31,14 +31,25 @@ export default function MobileDrawer({ isOpen, onClose }) {
       ? location.pathname.slice(0, -1)
       : location.pathname;
 
+    // 1. Exact route matching for Add Product
+    if (item.to === '/products/add') {
+      return currentPath === '/products/add';
+    }
+
+    // 2. Products route: highlights on /products and /products/edit/:id, but explicitly NOT on /products/add
     if (item.to === '/products') {
+      if (currentPath === '/products/add' || currentPath.startsWith('/products/add/')) {
+        return false;
+      }
       return currentPath === '/products' || currentPath.startsWith('/products/');
     }
 
+    // 3. Exact match for root / dashboard or explicit end items
     if (item.end || item.to === '/') {
       return currentPath === item.to;
     }
 
+    // 4. Other routes
     return currentPath === item.to || currentPath.startsWith(`${item.to}/`);
   };
 
@@ -131,33 +142,33 @@ export default function MobileDrawer({ isOpen, onClose }) {
         {/* Navigation List */}
         <nav className="mobile-drawer-nav">
           <div className="mobile-drawer-section-title">Store Management</div>
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              onClick={onClose}
-              aria-current={isItemActive(item) ? 'page' : undefined}
-              className={({ isActive: defaultActive }) => {
-                const isActive = isItemActive(item) || defaultActive;
-                return `mobile-drawer-nav-item ${isActive ? 'active' : ''}`;
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span className="mobile-nav-icon">{item.icon}</span>
-                <span>{item.label}</span>
-              </div>
+          {navItems.map((item) => {
+            const isActive = isItemActive(item);
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={onClose}
+                aria-current={isActive ? 'page' : false}
+                className={() => `mobile-drawer-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span className="mobile-nav-icon">{item.icon}</span>
+                  <span>{item.label}</span>
+                </div>
 
-              {item.badge && (
-                <span
-                  className="mobile-nav-badge"
-                  style={{ backgroundColor: item.badgeColor || '#059669' }}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </NavLink>
-          ))}
+                {item.badge && (
+                  <span
+                    className="mobile-nav-badge"
+                    style={{ backgroundColor: item.badgeColor || '#059669' }}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
 
           {/* Quick link to Customer Store */}
           <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #1e293b' }}>

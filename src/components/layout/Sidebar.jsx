@@ -33,14 +33,25 @@ export default function Sidebar() {
       ? location.pathname.slice(0, -1)
       : location.pathname;
 
+    // 1. Exact route matching for Add Product
+    if (item.to === '/products/add') {
+      return currentPath === '/products/add';
+    }
+
+    // 2. Products route: highlights on /products and /products/edit/:id, but explicitly NOT on /products/add
     if (item.to === '/products') {
+      if (currentPath === '/products/add' || currentPath.startsWith('/products/add/')) {
+        return false;
+      }
       return currentPath === '/products' || currentPath.startsWith('/products/');
     }
 
+    // 3. Exact match for root / dashboard or explicit end items
     if (item.end || item.to === '/') {
       return currentPath === item.to;
     }
 
+    // 4. Other routes
     return currentPath === item.to || currentPath.startsWith(`${item.to}/`);
   };
 
@@ -102,19 +113,16 @@ export default function Sidebar() {
 
       {/* Navigation List */}
       <nav style={{ flex: 1, padding: '1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto' }}>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive: defaultActive }) => {
-              const active = isItemActive(item) || defaultActive;
-              return active ? 'active' : '';
-            }}
-            aria-current={isItemActive(item) ? 'page' : undefined}
-            style={({ isActive: defaultActive }) => {
-              const active = isItemActive(item) || defaultActive;
-              return {
+        {navItems.map((item) => {
+          const isActive = isItemActive(item);
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={() => (isActive ? 'active' : '')}
+              aria-current={isActive ? 'page' : false}
+              style={() => ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -122,34 +130,34 @@ export default function Sidebar() {
                 borderRadius: '8px',
                 fontSize: '0.88rem',
                 fontWeight: 700,
-                color: active ? '#ffffff' : '#94a3b8',
-                backgroundColor: active ? '#065f46' : 'transparent',
+                color: isActive ? '#ffffff' : '#94a3b8',
+                backgroundColor: isActive ? '#065f46' : 'transparent',
                 transition: 'all 0.15s ease',
-                border: active ? '1px solid #059669' : '1px solid transparent'
-              };
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {item.icon}
-              <span className="sidebar-text-hide">{item.label}</span>
-            </div>
+                border: isActive ? '1px solid #059669' : '1px solid transparent'
+              })}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {item.icon}
+                <span className="sidebar-text-hide">{item.label}</span>
+              </div>
 
-            {item.badge && (
-              <span
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: 800,
-                  backgroundColor: item.badgeColor || '#059669',
-                  color: '#ffffff',
-                  padding: '0.1rem 0.45rem',
-                  borderRadius: '9999px'
-                }}
-              >
-                {item.badge}
-              </span>
-            )}
-          </NavLink>
-        ))}
+              {item.badge && (
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    backgroundColor: item.badgeColor || '#059669',
+                    color: '#ffffff',
+                    padding: '0.1rem 0.45rem',
+                    borderRadius: '9999px'
+                  }}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* Owner Profile & Logout */}
