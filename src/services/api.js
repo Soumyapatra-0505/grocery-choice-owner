@@ -2,7 +2,13 @@
  * Grocery Choice - Owner Portal API Service Layer
  * Centralized API client for communicating with the Spring Boot backend.
  */
-const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE_URL) || 'http://localhost:8080';
+const PRODUCTION_API_URL = 'https://grocery-choice-backend-production-8b3e.up.railway.app';
+
+const RAW_API_BASE_URL =
+  (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE_URL) ||
+  (import.meta?.env?.DEV ? 'http://localhost:8080' : PRODUCTION_API_URL);
+
+const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, '').replace(/\/api$/, '');
 
 /**
  * Standardized HTTP request wrapper with uniform error handling.
