@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import Logo from '../../assets/Logo';
 import { useOwnerAuth } from '../../context/OwnerAuthContext';
 import { useOwnerData } from '../../context/OwnerDataContext';
@@ -24,6 +24,23 @@ export default function MobileDrawer({ isOpen, onClose }) {
   const { owner, logout } = useOwnerAuth();
   const { lowStockProducts, orders } = useOwnerData();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isItemActive = (item) => {
+    const currentPath = location.pathname.endsWith('/') && location.pathname.length > 1
+      ? location.pathname.slice(0, -1)
+      : location.pathname;
+
+    if (item.to === '/products') {
+      return currentPath === '/products' || currentPath.startsWith('/products/');
+    }
+
+    if (item.end || item.to === '/') {
+      return currentPath === item.to;
+    }
+
+    return currentPath === item.to || currentPath.startsWith(`${item.to}/`);
+  };
 
   // Close on Escape key press
   useEffect(() => {
@@ -120,9 +137,11 @@ export default function MobileDrawer({ isOpen, onClose }) {
               to={item.to}
               end={item.end}
               onClick={onClose}
-              className={({ isActive }) =>
-                `mobile-drawer-nav-item ${isActive ? 'active' : ''}`
-              }
+              aria-current={isItemActive(item) ? 'page' : undefined}
+              className={({ isActive: defaultActive }) => {
+                const isActive = isItemActive(item) || defaultActive;
+                return `mobile-drawer-nav-item ${isActive ? 'active' : ''}`;
+              }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <span className="mobile-nav-icon">{item.icon}</span>

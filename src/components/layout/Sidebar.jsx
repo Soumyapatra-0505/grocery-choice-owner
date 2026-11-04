@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import Logo from '../../assets/Logo';
 import { useOwnerAuth } from '../../context/OwnerAuthContext';
 import { useOwnerData } from '../../context/OwnerDataContext';
@@ -21,10 +21,27 @@ export default function Sidebar() {
   const { owner, logout } = useOwnerAuth();
   const { lowStockProducts, orders } = useOwnerData();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const isItemActive = (item) => {
+    const currentPath = location.pathname.endsWith('/') && location.pathname.length > 1
+      ? location.pathname.slice(0, -1)
+      : location.pathname;
+
+    if (item.to === '/products') {
+      return currentPath === '/products' || currentPath.startsWith('/products/');
+    }
+
+    if (item.end || item.to === '/') {
+      return currentPath === item.to;
+    }
+
+    return currentPath === item.to || currentPath.startsWith(`${item.to}/`);
   };
 
   const navItems = [
@@ -90,19 +107,27 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.65rem 0.85rem',
-              borderRadius: '8px',
-              fontSize: '0.88rem',
-              fontWeight: 700,
-              color: isActive ? '#ffffff' : '#94a3b8',
-              backgroundColor: isActive ? '#065f46' : 'transparent',
-              transition: 'all 0.15s ease',
-              border: isActive ? '1px solid #059669' : '1px solid transparent'
-            })}
+            className={({ isActive: defaultActive }) => {
+              const active = isItemActive(item) || defaultActive;
+              return active ? 'active' : '';
+            }}
+            aria-current={isItemActive(item) ? 'page' : undefined}
+            style={({ isActive: defaultActive }) => {
+              const active = isItemActive(item) || defaultActive;
+              return {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.65rem 0.85rem',
+                borderRadius: '8px',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                color: active ? '#ffffff' : '#94a3b8',
+                backgroundColor: active ? '#065f46' : 'transparent',
+                transition: 'all 0.15s ease',
+                border: active ? '1px solid #059669' : '1px solid transparent'
+              };
+            }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               {item.icon}
